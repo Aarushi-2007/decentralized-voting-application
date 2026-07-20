@@ -1,0 +1,832 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+migrations/
+  deploy.ts
+programs/
+  smart_contract/
+    src/
+      instructions/
+        cast_vote.rs
+        close_proposal.rs
+        create_proposal.rs
+        finalize_proposal.rs
+        initialize.rs
+        mod.rs
+      state/
+        mod.rs
+        proposal.rs
+        vote.rs
+      constants.rs
+      errors.rs
+      lib.rs
+    tests/
+      test_cast_vote.rs
+      test_close_proposal.rs
+      test_create_proposal.rs
+      test_finalize_proposal.rs
+      test_initialize.rs
+    Cargo.toml
+.gitignore
+.prettierignore
+Anchor.toml
+Cargo.toml
+package.json
+rust-toolchain.toml
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="migrations/deploy.ts">
+// Migrations are an early feature. Currently, they're nothing more than this
+// single deploy script that's invoked from the CLI, injecting a provider
+// configured from the workspace's Anchor.toml.
+
+import * as anchor from "@anchor-lang/core";
+
+module.exports = async function (provider: anchor.AnchorProvider) {
+  // Configure client to use the provider.
+  anchor.setProvider(provider);
+
+  // Add your deploy script here.
+};
+</file>
+
+<file path="programs/smart_contract/src/instructions/cast_vote.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+use crate::state::vote::Vote;
+
+#[derive(Accounts)]
+
+pub struct CastVote<'info> {
+    #[account(init, payer= member, 
+        seeds= [
+            b"vote",
+            member.key().as_ref(),
+        ],
+        bump,
+        space= 8
+        +32
+        +(4+50)
+    )]
+    pub vote: Account<'info,Vote>,
+
+    #[account(mut)]
+    pub proposal: Account<'info,Proposal>,
+    #[account(mut)]
+    pub member: Signer<'info>,
+    pub system_program: Program<'info,System>,
+
+}
+
+pub fn cast_vote(ctx: Context<CastVote>, option: u8) -> Result<()> {
+    let vote= &mut ctx.accounts.vote;
+    let proposal= &mut ctx.accounts.proposal;
+    vote.member= ctx.accounts.member.key();
+    vote.option= option;
+    proposal.vote_counts[option as usize]+=1;
+    msg!("Your vote has been casted, THANKYOU");
+    Ok(())
+}
+</file>
+
+<file path="programs/smart_contract/src/instructions/close_proposal.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+
+#[derive(Accounts)]
+
+pub struct CloseProposal<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+
+    #[account(mut,
+        seeds= [
+            b"proposal",
+            creator.key().as_ref(),
+        ],
+        bump,
+        close= creator,
+    )]
+    pub proposal: Account<'info,Proposal>
+}
+
+
+pub fn close_proposal(ctx: Context<CloseProposal>) -> Result<()> {
+
+    msg!("This proposal has been closed");
+    Ok(())
+}
+</file>
+
+<file path="programs/smart_contract/src/instructions/create_proposal.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+
+#[derive(Accounts)]
+
+pub struct CreateProposal<'info> {
+    #[account(init, payer = creator, seeds = [
+        b"proposal",
+        creator.key().as_ref(),
+        ],
+        bump,
+        space= 8 //discriminator
+        +32 // creator
+        +8 //id
+        +(4+100) //title
+        +(4+500) //description
+        +(4+5*(4+50)) //options
+        +(4+(5*8)) //count votes
+        +8 //end time
+        +1 //finalized
+        +(4+50) //winning option
+    )] 
+
+    pub proposal: Account<'info, Proposal>,
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    pub system_program: Program<'info,System>
+}
+
+
+pub fn create_proposal(ctx: Context<CreateProposal>, title: String, description: String, options: Vec<String>, id: u64,end_time: i64)
+-> Result<()> {
+    let proposal= &mut ctx.accounts.proposal;
+    proposal.title= title;
+    proposal.description= description;
+    proposal.creator= ctx.accounts.creator.key();
+    proposal.vote_counts = vec![0; options.len()];
+    proposal.options= options;
+    proposal.id= id;
+    proposal.end_time= end_time;
+    msg!("Proposal created successfully");
+    Ok(())
+}
+</file>
+
+<file path="programs/smart_contract/src/instructions/finalize_proposal.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+use crate::errors::DaoError;
+
+#[derive(Accounts)]
+
+pub struct FinalizeProposal<'info> {
+
+    #[account(mut)]
+    pub proposal: Account<'info,Proposal>,
+    pub signer: Signer<'info>,
+    
+}
+
+pub fn finalize_proposal(ctx: Context<FinalizeProposal>) -> Result<()> {
+    let proposal= &mut ctx.accounts.proposal;
+
+    let current_time= Clock::get()?.unix_timestamp;
+
+    msg!("Current time: {}", current_time);
+    msg!("Proposal end_time: {}", proposal.end_time);
+
+    require!(
+        current_time>=proposal.end_time,
+        DaoError::VotingStillOpen
+    );
+
+    require!(
+        !proposal.finalized,
+        DaoError::AlreadyFinalized
+    );
+
+    require!(
+        !proposal.vote_counts.is_empty(),
+        DaoError::NoOptions
+    );
+
+    let mut winner= 0;
+    let mut max_votes= proposal.vote_counts[0];
+
+    for i in 1..proposal.vote_counts.len() {
+        if proposal.vote_counts[i]>max_votes{
+            max_votes= proposal.vote_counts[i];
+            winner= i;
+        }
+    }
+
+    proposal.winning_option= Some(winner as u16);
+    proposal.finalized= true;
+
+
+    msg!("This proposal has been finalized");
+
+    Ok(())
+    
+}
+</file>
+
+<file path="programs/smart_contract/src/instructions/initialize.rs">
+use anchor_lang::prelude::*;
+
+#[derive(Accounts)]
+pub struct Initialize {}
+
+pub fn handler(ctx: Context<Initialize>) -> Result<()> {
+    msg!("Greetings from: {:?}", ctx.program_id);
+    Ok(())
+}
+</file>
+
+<file path="programs/smart_contract/src/instructions/mod.rs">
+pub mod initialize;
+pub mod create_proposal;
+pub mod cast_vote;
+pub mod finalize_proposal;
+pub mod close_proposal;
+
+pub use initialize::*;
+pub use create_proposal::*;
+pub use cast_vote::*;
+pub use finalize_proposal::*;
+pub use close_proposal::*;
+</file>
+
+<file path="programs/smart_contract/src/state/mod.rs">
+pub mod proposal;
+pub mod vote;
+
+pub use proposal::*;
+pub use vote::*;
+</file>
+
+<file path="programs/smart_contract/src/state/proposal.rs">
+use anchor_lang::prelude::*;
+
+#[account]
+pub struct Proposal {
+    pub creator: Pubkey,
+    pub id: u64,
+    pub title: String,
+    pub description: String,
+    pub options: Vec<String>,
+    pub vote_counts: Vec<u64>,
+    pub end_time: i64,
+    pub finalized: bool,
+    pub winning_option: Option<u16>,
+}
+</file>
+
+<file path="programs/smart_contract/src/state/vote.rs">
+use anchor_lang::prelude::*;
+
+#[account]
+pub struct Vote {
+    pub member: Pubkey,
+    pub option: u8,
+}
+</file>
+
+<file path="programs/smart_contract/src/constants.rs">
+use anchor_lang::prelude::*;
+
+#[constant]
+pub const SEED: &str = "anchor";
+</file>
+
+<file path="programs/smart_contract/src/errors.rs">
+use anchor_lang::prelude::*;
+
+#[error_code]
+pub enum DaoError {
+    #[msg("You are not allowed to close the proposal")]
+    Unauthorized,
+
+    #[msg("The voting is still open")]
+    VotingStillOpen,
+
+    #[msg("The proposal has already finalized")]
+    AlreadyFinalized,
+
+    #[msg("There are no options to this proposal")]
+    NoOptions,
+
+    
+
+}
+</file>
+
+<file path="programs/smart_contract/src/lib.rs">
+pub mod constants;
+pub mod errors;
+pub mod instructions;
+pub mod state;
+
+use anchor_lang::prelude::*;
+
+pub use constants::*;
+pub use instructions::*;
+pub use state::*;
+
+declare_id!("6HF7SL2ydXxthwKgFmw5ELh9QzkgrTav7AWEuKcCqh5S");
+
+#[program]
+pub mod smart_contract {
+    use super::*;
+
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        initialize::handler(ctx)
+    }
+
+    pub fn create_proposal(ctx: Context<CreateProposal>, title: String, description: String, options: Vec<String>, id: u64, end_time: i64) -> Result<()> {
+        create_proposal::create_proposal(ctx,title,description,options,id,end_time)
+    }
+
+    pub fn cast_vote(ctx: Context<CastVote>, option: u8) -> Result<()> {
+        cast_vote::cast_vote(ctx,option)
+    }
+
+    pub fn finalize_proposal(ctx: Context<FinalizeProposal>) -> Result<()> {
+        finalize_proposal::finalize_proposal(ctx)
+    }
+
+    pub fn close_proposal(ctx: Context<CloseProposal>) -> Result<()> {
+        close_proposal::close_proposal(ctx)
+    }
+}
+</file>
+
+<file path="programs/smart_contract/tests/test_cast_vote.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+
+#[test]
+
+fn test_cast_vote() {
+    let program_id= smart_contract::id();
+    let member= Keypair::new();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    let (vote_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"vote",
+            member.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&member.pubkey(), 1_000_000_000).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+    let create_proposal= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 3 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[create_proposal], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+    let p_res= svm.send_transaction(tx);
+    assert!(p_res.is_ok());
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CastVote{option: 2}.data(),
+        smart_contract::accounts::CastVote{member: member.pubkey(),
+                                                    proposal: proposal_pda,
+                                                    vote: vote_pda,
+                                                    system_program: system_program::ID}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&member.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[member]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="programs/smart_contract/tests/test_close_proposal.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+#[test]
+
+fn test_close_proposal() {
+    let program_id= smart_contract::id();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+
+
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 3 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[&creator]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    assert!(res.is_ok());
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CloseProposal{}.data(),
+        smart_contract::accounts::CloseProposal{creator: creator.pubkey(),
+                                                            proposal: proposal_pda}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="programs/smart_contract/tests/test_create_proposal.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+#[test]
+
+fn test_create_proposal() {
+    let program_id= smart_contract::id();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes= include_bytes!("../../../target/deploy/smart_contract.so");
+
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 3 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="programs/smart_contract/tests/test_finalize_proposal.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+
+#[test]
+
+fn test_finalize_proposal(){
+    let program_id= smart_contract::id();
+    let payer= Keypair::new();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+    let create_proposal= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 0 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[create_proposal], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+    let p_res= svm.send_transaction(tx);
+    assert!(p_res.is_ok());
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::FinalizeProposal{}.data(),
+        smart_contract::accounts::FinalizeProposal{signer: payer.pubkey(),
+                                                            proposal: proposal_pda, }.to_account_metas(None)
+
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash( &[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg),&[payer]).unwrap();
+    let res= svm.send_transaction(tx);
+
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="programs/smart_contract/tests/test_initialize.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+#[test]
+fn test_initialize() {
+    let program_id = smart_contract::id();
+    let payer = Keypair::new();
+    let mut svm = LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::Initialize {}.data(),
+        smart_contract::accounts::Initialize {}.to_account_metas(None),
+    );
+
+    let blockhash = svm.latest_blockhash();
+    let msg = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer]).unwrap();
+
+    let res = svm.send_transaction(tx);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="programs/smart_contract/Cargo.toml">
+[package]
+name = "smart_contract"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "smart_contract"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+
+[dependencies]
+anchor-lang = "1.0.1"
+solana-pubkey = "4.2.0"
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-message = "3.0.1"
+solana-transaction = "3.0.2"
+solana-signer = "3.0.0"
+solana-keypair = "3.0.1"
+
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+</file>
+
+<file path=".gitignore">
+.anchor
+.DS_Store
+target
+**/*.rs.bk
+node_modules
+test-ledger
+.yarn
+.surfpool
+</file>
+
+<file path=".prettierignore">
+.anchor
+.DS_Store
+target
+node_modules
+dist
+build
+test-ledger
+</file>
+
+<file path="Anchor.toml">
+[toolchain]
+package_manager = "yarn"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+smart_contract = "B8aK6tZexrXB4Ji7Pk1qcHeSvCiEQa1hVGcKr2k7J43e"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test"
+
+[hooks]
+</file>
+
+<file path="Cargo.toml">
+[workspace]
+members = [
+    "programs/*"
+]
+resolver = "2"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
+</file>
+
+<file path="package.json">
+{
+  "license": "ISC",
+  "scripts": {
+    "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
+    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
+  },
+  "dependencies": {
+    "@anchor-lang/core": "^1.0.1"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "mocha": "^9.0.3",
+    "ts-mocha": "^10.0.0",
+    "@types/bn.js": "^5.1.0",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^9.0.0",
+    "typescript": "^5.7.3",
+    "prettier": "^2.6.2"
+  }
+}
+</file>
+
+<file path="rust-toolchain.toml">
+[toolchain]
+channel = "1.89.0"
+components = ["rustfmt","clippy"]
+profile = "minimal"
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "types": ["mocha", "chai"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2015"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true
+  }
+}
+</file>
+
+</files>
