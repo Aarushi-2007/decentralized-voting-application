@@ -1,0 +1,17 @@
+@import "@solana/wallet-adapter-react-ui/styles.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+}
+
+/* Override the default wallet-adapter button so it matches our design language */
+.wallet-adapter-button {
+  background: linear-gradient(135deg, #5b3cff, #7c6cff) !important;
+  border-radius: 9999px !important;
+  height: 48px !important;
+  font-weight: 600 !important;
+}
