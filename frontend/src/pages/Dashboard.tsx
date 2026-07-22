@@ -34,7 +34,7 @@ export const Dashboard: FC = () => {
       <div className="max-w-4xl mx-auto px-6 py-10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-brand-900">Your dashboard</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Your dashboard</h1>
             <p className="text-sm text-slate-500 mt-1">
               Signed in as{" "}
               <span className="font-mono">
@@ -45,13 +45,13 @@ export const Dashboard: FC = () => {
           <div className="flex gap-3">
             <button
               onClick={() => setShowJoin(true)}
-              className="flex items-center gap-2 bg-white border border-slate-200 text-brand-900 font-medium rounded-xl px-4 py-2.5 hover:border-brand-300 transition"
+              className="flex items-center gap-2 bg-white border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-2.5 hover:border-violet-300 transition"
             >
               <LogIn size={16} /> Join community
             </button>
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 bg-brand-600 text-white font-medium rounded-xl px-4 py-2.5 hover:bg-brand-500 transition"
+              className="flex items-center gap-2 bg-violet-600 text-white font-medium rounded-xl px-4 py-2.5 hover:bg-violet-500 transition"
             >
               <Plus size={16} /> Create community
             </button>
@@ -80,9 +80,9 @@ export const Dashboard: FC = () => {
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {communities.map((c) => (
               <CommunityCard
-                key={c.id}
+                key={c._id}
                 community={c}
-                onClick={() => navigate(`/community/${c.id}`)}
+                onClick={() => navigate(`/api/communities/${c.invite_code}`)}
               />
             ))}
           </div>
@@ -93,9 +93,9 @@ export const Dashboard: FC = () => {
       {showJoin && (
         <JoinCommunityModal
           onClose={() => setShowJoin(false)}
-          onJoined={(communityId) => {
+          onJoined={(invite_code) => {
             setShowJoin(false);
-            navigate(`/community/${communityId}`);
+            navigate(`/api/communities/${invite_code}`);
           }}
         />
       )}

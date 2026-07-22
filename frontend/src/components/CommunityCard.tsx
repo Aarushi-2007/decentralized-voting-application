@@ -19,8 +19,8 @@ export const CommunityCard: FC<Props> = ({ community, onClick }) => (
       )}
       <div className="flex items-center gap-1.5 mt-3 text-xs text-slate-400">
         <Users size={14} />
-        {community.memberWallets.length} member
-        {community.memberWallets.length !== 1 ? "s" : ""}
+        {community.members.length} member
+        {community.members.length !== 1 ? "s" : ""}
       </div>
     </div>
     <ChevronRight className="text-slate-300" />

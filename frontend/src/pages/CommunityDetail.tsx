@@ -13,7 +13,7 @@ import { type Community } from "../types";
 import { ArrowLeft, Plus, Copy, Check, Info, Loader2 } from "lucide-react";
 
 export const CommunityDetail: FC = () => {
-  const { communityId } = useParams();
+  const { invite_code } = useParams();
   const { address, connected } = useAuthWallet();
   const { sign } = useWalletAuth();
   const program = useProgram();
@@ -33,14 +33,14 @@ export const CommunityDetail: FC = () => {
 
   // Load the community from the backend
   useEffect(() => {
-    if (!communityId) return;
+    if (!invite_code || !address) return;
     setLoadingCommunity(true);
     setLoadError(null);
-    getCommunity(communityId)
+    getCommunity(invite_code)
       .then(setCommunity)
       .catch((err) => setLoadError(err instanceof Error ? err.message : "Failed to load community."))
       .finally(() => setLoadingCommunity(false));
-  }, [communityId]);
+  }, [invite_code, address]);
 
   // Check the contract-wide vote flag for this wallet. NOTE: the Vote PDA
   // is seeded only by wallet, not by proposal, so this is a global
@@ -54,7 +54,7 @@ export const CommunityDetail: FC = () => {
   const handleProposalClosed = useCallback((proposalAddress: string) => {
     setCommunity((prev) =>
       prev
-        ? { ...prev, proposalAddresses: prev.proposalAddresses.filter((a) => a !== proposalAddress) }
+        ? { ...prev, proposalAddresses: prev.proposals.filter((a) => a !== proposalAddress) }
         : prev
     );
   }, []);
@@ -70,14 +70,14 @@ export const CommunityDetail: FC = () => {
     if (!community) return;
     try {
       const auth = await sign("add_proposal_to_community");
-      const updated = await addProposalToCommunity(community.id, proposalAddress, auth);
+      const updated = await addProposalToCommunity(community._id, proposalAddress, auth);
       setCommunity(updated);
     } catch {
       // The proposal is already live on-chain even if linking it to the
       // community off-chain fails — don't block the creator on that; just
       // reflect it locally so they still see it in this session.
       setCommunity((prev) =>
-        prev ? { ...prev, proposalAddresses: [...prev.proposalAddresses, proposalAddress] } : prev
+        prev ? { ...prev, proposalAddresses: [...prev.proposals, proposalAddress] } : prev
       );
     }
   };
@@ -106,7 +106,7 @@ export const CommunityDetail: FC = () => {
     );
   }
 
-  const isMember = community.memberWallets.includes(address);
+  const isMember = community.members.includes(address);
 
   if (!isMember) {
     return (
@@ -167,13 +167,13 @@ export const CommunityDetail: FC = () => {
           Active proposals
         </h2>
 
-        {community.proposalAddresses.length === 0 ? (
+        {community.proposals.length === 0 ? (
           <div className="mt-4 bg-white border border-dashed border-slate-200 rounded-2xl p-10 text-center">
             <p className="text-slate-500">No proposals yet. Create the first one.</p>
           </div>
         ) : (
           <div className="mt-4 space-y-4">
-            {community.proposalAddresses.map((addr) => (
+            {community.proposals.map((addr) => (
               <ProposalCard
                 key={addr}
                 proposalAddress={addr}
@@ -189,7 +189,7 @@ export const CommunityDetail: FC = () => {
 
       {showCreateProposal && (
         <CreateProposalModal
-          communityId={community.id}
+          communityId={community._id}
           wallet={address}
           onClose={() => setShowCreateProposal(false)}
           onCreated={handleProposalCreated}

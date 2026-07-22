@@ -5,7 +5,7 @@ import { useWalletAuth } from "../hooks/useWalletAuth";
 
 interface Props {
   onClose: () => void;
-  onJoined: (communityId: string) => void;
+  onJoined: (invite_code: string) => void;
 }
 
 export const JoinCommunityModal: FC<Props> = ({ onClose, onJoined }) => {
@@ -32,7 +32,8 @@ export const JoinCommunityModal: FC<Props> = ({ onClose, onJoined }) => {
     try {
       const auth = await sign("join_community");
       const community = await joinCommunity(code, auth);
-      onJoined(community.id);
+      onJoined(community.invite_code);
+      console.log("community= ",community );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't join that community.");
     } finally {

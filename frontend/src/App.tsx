@@ -10,7 +10,7 @@ const App: FC = () => {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/community/:communityId" element={<CommunityDetail />} />
+      <Route path="/api/communities/:invite_code" element={<CommunityDetail />} />
       <Route path="/join/:inviteCode" element={<JoinByLink />} />
     </Routes>
   );

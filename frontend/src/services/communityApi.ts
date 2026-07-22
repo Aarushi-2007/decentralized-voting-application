@@ -4,7 +4,7 @@
 import { type Community } from "../types";
 import { type SignedAuthPayload } from "../utils/walletAuth";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -18,11 +18,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-// GET /api/communities?wallet=<pubkey> -> Community[]  (read-only, unauthenticated)
-export function listCommunities(wallet: string): Promise<Community[]> {
-  return request<Community[]>(`/api/communities?wallet=${encodeURIComponent(wallet)}`);
-}
-
 // POST /api/communities { name, description, wallet, message, signature } -> Community
 export function createCommunity(name: string, description: string, auth: SignedAuthPayload): Promise<Community> {
   return request<Community>(`/api/communities`, {
@@ -32,16 +27,23 @@ export function createCommunity(name: string, description: string, auth: SignedA
 }
 
 // POST /api/communities/join { inviteCode, wallet, message, signature } -> Community
-export function joinCommunity(inviteCode: string, auth: SignedAuthPayload): Promise<Community> {
-  return request<Community>(`/api/communities/join`, {
+export function joinCommunity(invite_code: string, auth: SignedAuthPayload): Promise<Community> {
+  return request<Community>(`/api/communities/join/${invite_code}`, {
     method: "POST",
-    body: JSON.stringify({ inviteCode, ...auth }),
+    body: JSON.stringify({ invite_code, ...auth }),
   });
 }
 
-// GET /api/communities/:id -> Community (read-only, unauthenticated)
-export function getCommunity(id: string): Promise<Community> {
-  return request<Community>(`/api/communities/${id}`);
+// GET /api/communities/user/:wallet -> Community[]
+export function getJoinedCommunities(wallet: string): Promise<Community[]> {
+  return request<Community[]>(
+    `/api/communities/user/${encodeURIComponent(wallet)}`
+  );
+}
+
+//Get the community you clicked on
+export function getCommunity(invite_code: string): Promise<Community> {
+  return request<Community>(`/api/communities/${encodeURIComponent(invite_code)}`);
 }
 
 // POST /api/communities/:id/proposals { proposalAddress, wallet, message, signature } -> Community
@@ -56,11 +58,7 @@ export function addProposalToCommunity(
   });
 }
 
-// GET /api/communities/preview/:inviteCode -> { name, description } (read-only)
-export function getCommunityPreview(inviteCode: string): Promise<{ name: string; description: string }> {
-  return request(`/api/communities/preview/${encodeURIComponent(inviteCode)}`);
-}
 
 export function buildInviteLink(community: Community): string {
-  return `${window.location.origin}/join/${community.inviteCode}`;
+  return `${window.location.origin}/join/${community.invite_code}`;
 }

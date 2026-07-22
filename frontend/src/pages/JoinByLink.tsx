@@ -3,44 +3,44 @@ import { useNavigate, useParams } from "react-router-dom";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useAuthWallet } from "../hooks/UseAuthWallet";
 import { useWalletAuth } from "../hooks/useWalletAuth";
-import { useAppData } from "../context/AppDataContext";
-import { getCommunityPreview } from "../services/communityApi";
+// import { useAppData } from "../context/AppDataContext";
+import { joinCommunity } from "../services/communityApi";
 
 export const JoinByLink: FC = () => {
-  const { inviteCode } = useParams();
+  const { invite_code } = useParams();
   const { address, connected } = useAuthWallet();
   const { sign } = useWalletAuth();
-  const { joinCommunity } = useAppData();
+  // const { joinCommunity } = useAppData();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
-  const [previewName, setPreviewName] = useState<string | null>(null);
+  const [previewName ] = useState<string | null>(null);
 
   // Best-effort preview so the visitor sees which community they're
   // joining before they've even connected a wallet.
-  useEffect(() => {
-    if (!inviteCode) return;
-    getCommunityPreview(inviteCode)
-      .then((p) => setPreviewName(p.name))
-      .catch(() => {
-        // Preview failing is fine — joining below still works without it.
-      });
-  }, [inviteCode]);
+  // useEffect(() => {
+  //   if (!inviteCode) return;
+  //   joinCommunity(inviteCode)
+  //     .then((p) => setPreviewName(p.name))
+  //     .catch(() => {
+  //       // Preview failing is fine — joining below still works without it.
+  //     });
+  // }, [inviteCode]);
 
   // Once connected, sign a message to prove wallet ownership, then join.
   useEffect(() => {
-    if (connected && address && inviteCode && !joining) {
+    if (connected && address && invite_code && !joining) {
       setJoining(true);
       sign("join_community")
-        .then((auth) => joinCommunity(inviteCode, auth))
-        .then((community) => navigate(`/community/${community.id}`))
+        .then((auth) => joinCommunity(invite_code, auth))
+        .then((community) => navigate(`/api/communities/${community.invite_code}`))
         .catch((err) => {
           setError(err instanceof Error ? err.message : "Couldn't join that community.");
           setJoining(false);
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected, address, inviteCode]);
+  }, [connected, address, invite_code]);
 
   return (
     <div className="min-h-screen bg-[#f6f5ff] flex items-center justify-center px-4">

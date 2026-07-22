@@ -28,7 +28,7 @@ export const AppDataProvider: FC<{ children: ReactNode }> = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.listCommunities(wallet);
+      const data = await api.getJoinedCommunities(wallet);
       setCommunities(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load communities.");
@@ -46,8 +46,8 @@ export const AppDataProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const joinCommunity = useCallback(async (inviteCode: string, auth: SignedAuthPayload) => {
     const community = await api.joinCommunity(inviteCode, auth);
     setCommunities((prev) => {
-      const exists = prev.some((c) => c.id === community.id);
-      return exists ? prev.map((c) => (c.id === community.id ? community : c)) : [...prev, community];
+      const exists = prev.some((c) => c._id === community._id);
+      return exists ? prev.map((c) => (c._id === community._id ? community : c)) : [...prev, community];
     });
     return community;
   }, []);
@@ -55,7 +55,7 @@ export const AppDataProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const addProposalToCommunity = useCallback(
     async (communityId: string, proposalAddress: string, auth: SignedAuthPayload) => {
       const community = await api.addProposalToCommunity(communityId, proposalAddress, auth);
-      setCommunities((prev) => prev.map((c) => (c.id === communityId ? community : c)));
+      setCommunities((prev) => prev.map((c) => (c._id === communityId ? community : c)));
       return community;
     },
     []

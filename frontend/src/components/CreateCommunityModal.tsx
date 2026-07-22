@@ -49,7 +49,7 @@ export const CreateCommunityModal: FC<Props> = ({ onClose }) => {
 
         {!createdInvite ? (
           <>
-            <h2 className="text-xl font-semibold text-brand-900">Create a community</h2>
+            <h2 className="text-xl font-semibold text-slate-900">Create a community</h2>
             <p className="text-sm text-slate-500 mt-1">
               You'll be asked to sign a message with Phantom to verify this wallet, then get a unique invite link.
             </p>
@@ -59,7 +59,7 @@ export const CreateCommunityModal: FC<Props> = ({ onClose }) => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Core Contributors DAO"
-              className="w-full mt-1.5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-400"
+              className="w-full mt-1.5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-200"
             />
 
             <label className="block mt-4 text-sm font-medium text-slate-600">Description (optional)</label>
@@ -76,7 +76,7 @@ export const CreateCommunityModal: FC<Props> = ({ onClose }) => {
             <button
               onClick={handleCreate}
               disabled={!name.trim() || submitting}
-              className="mt-6 w-full flex items-center justify-center gap-2 bg-brand-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-medium rounded-xl py-3 hover:bg-brand-500 transition"
+              className="mt-6 w-full flex items-center justify-center gap-2 bg-violet-600 text-white font-medium rounded-xl py-3 hover:bg-violet-700 transition disabled:bg-slate-200 disabled:text-slate-400"
             >
               {submitting && <Loader2 size={16} className="animate-spin" />}
               {submitting ? "Waiting for signature..." : "Create community"}
@@ -88,13 +88,13 @@ export const CreateCommunityModal: FC<Props> = ({ onClose }) => {
             <p className="text-sm text-slate-500 mt-1">Share this invite link so others can join.</p>
             <div className="mt-5 flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-3 bg-slate-50">
               <span className="text-sm text-slate-600 truncate flex-1">{createdInvite}</span>
-              <button onClick={handleCopy} className="text-brand-600 shrink-0">
+              <button onClick={handleCopy} className="text-violet-600 shrink-0">
                 {copied ? <Check size={18} /> : <Copy size={18} />}
               </button>
             </div>
             <button
               onClick={onClose}
-              className="mt-6 w-full bg-brand-900 text-white font-medium rounded-xl py-3 hover:bg-brand-600 transition"
+              className="mt-6 w-full bg-violet-900 text-white font-medium rounded-xl py-3 hover:bg-violet-600 transition"
             >
               Done
             </button>
