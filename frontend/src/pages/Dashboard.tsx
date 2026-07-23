@@ -92,7 +92,7 @@ export const Dashboard: FC = () => {
               {error}
             </div>
           ) : communities.length === 0 ? (
-            <div className="mt-4 bg-white/[0.04] backdrop-blur-xl border border-dashed border-white/15 rounded-2xl p-10 text-center">
+            <div className="mt-4 bg-white/4 backdrop-blur-xl border border-dashed border-white/15 rounded-2xl p-10 text-center">
               <p className="text-slate-400">
                 You haven't joined or created a community yet.
               </p>

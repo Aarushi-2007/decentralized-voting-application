@@ -47,7 +47,7 @@ export const JoinByLink: FC = () => {
     <div className="relative min-h-screen overflow-hidden flex items-center justify-center px-4">
       <DarkVeil hueShift={12} noiseIntensity={0} scanlineIntensity={0} speed={0.5} scanlineFrequency={0} warpAmount={0} />
 
-      <div className="relative z-10 bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl shadow-soft p-8 max-w-md w-full text-center">
+      <div className="relative z-10 bg-white/4 backdrop-blur-xl border border-white/10 rounded-2xl shadow-soft p-8 max-w-md w-full text-center">
         <h1 className="font-display text-xl font-semibold text-white">
           You've been invited{previewName ? ` to ${previewName}` : ""}
         </h1>

@@ -12,7 +12,7 @@ export const Navbar: FC = () => {
           onClick={() => navigate("/")}
           className="flex items-center gap-2.5 font-display font-semibold text-white text-lg tracking-tight"
         >
-          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white shadow-glow">
+          <span className="w-9 h-9 rounded-xl bg-linear-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white shadow-glow">
             <Vote size={17} />
           </span>
           Vota

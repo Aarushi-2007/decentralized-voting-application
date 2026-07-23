@@ -50,7 +50,7 @@ export const ProposalCard: FC<Props> = ({
 
   if (loading) {
     return (
-      <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-soft flex items-center gap-2 text-slate-400 text-sm">
+      <div className="bg-white/4 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-soft flex items-center gap-2 text-slate-400 text-sm">
         <Loader2 size={16} className="animate-spin" /> Loading proposal...
       </div>
     );
@@ -58,7 +58,7 @@ export const ProposalCard: FC<Props> = ({
 
   if (!proposal) {
     return (
-      <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-soft text-sm text-slate-400">
+      <div className="bg-white/4 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-soft text-sm text-slate-400">
         {error ?? "Proposal unavailable."}
       </div>
     );
@@ -111,7 +111,7 @@ export const ProposalCard: FC<Props> = ({
   };
 
   return (
-    <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-soft">
+    <div className="bg-white/4 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-soft">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="font-display font-semibold text-white">{proposal.title}</h3>

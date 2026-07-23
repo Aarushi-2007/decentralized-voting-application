@@ -30,7 +30,7 @@ export const Landing: FC = () => {
       {/* Foreground */}
       <div className="relative z-10 min-h-screen flex flex-col">
         <header className="max-w-6xl mx-auto w-full px-6 pt-8 flex items-center gap-2.5">
-          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white shadow-glow">
+          <span className="w-9 h-9 rounded-xl bg-linear-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white shadow-glow">
             <Vote size={17} />
           </span>
           <span className="font-display font-semibold text-white text-lg tracking-tight">Vota</span>
@@ -93,7 +93,7 @@ const FeatureCard: FC<{
   title: string;
   copy: string;
 }> = ({ icon, title, copy }) => (
-  <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/10 p-6 text-left hover:bg-white/[0.07] hover:border-white/20 transition-all duration-300">
+  <div className="rounded-2xl bg-white/4 backdrop-blur-xl border border-white/10 p-6 text-left hover:bg-white/[0.07] hover:border-white/20 transition-all duration-300">
     <div className="w-11 h-11 rounded-xl bg-brand-500/15 text-brand-300 flex items-center justify-center mb-4">
       {icon}
     </div>

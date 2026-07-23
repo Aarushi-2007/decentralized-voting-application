@@ -202,7 +202,7 @@ export const CommunityDetail: FC = () => {
 
         {showCreateProposal && (
           <CreateProposalModal
-            communityId={community._id}
+            // communityId={community._id}
             wallet={address}
             onClose={() => setShowCreateProposal(false)}
             onCreated={handleProposalCreated}

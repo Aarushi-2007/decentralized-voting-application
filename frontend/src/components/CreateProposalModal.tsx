@@ -5,13 +5,13 @@ import { useProgram } from "../anchor/useProgram";
 import { createProposalOnChain, friendlyTxError } from "../services/votingService";
 
 interface Props {
-  communityId: string;
+  // communityId: string;
   wallet: string;
   onClose: () => void;
   onCreated: (proposalAddress: string) => void;
 }
 
-export const CreateProposalModal: FC<Props> = ({ communityId, wallet, onClose, onCreated }) => {
+export const CreateProposalModal: FC<Props> = ({wallet, onClose, onCreated }) => {
   const program = useProgram();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
