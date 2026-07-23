@@ -41,42 +41,42 @@ export const CreateCommunityModal: FC<Props> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-30 px-4">
-      <div className="bg-white rounded-2xl shadow-soft w-full max-w-md p-6 relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30 px-4">
+      <div className="bg-ink-900 border border-white/10 rounded-2xl shadow-soft w-full max-w-md p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white transition">
           <X size={20} />
         </button>
 
         {!createdInvite ? (
           <>
-            <h2 className="text-xl font-semibold text-slate-900">Create a community</h2>
-            <p className="text-sm text-slate-500 mt-1">
+            <h2 className="font-display text-xl font-semibold text-white">Create a community</h2>
+            <p className="text-sm text-slate-400 mt-1">
               You'll be asked to sign a message with Phantom to verify this wallet, then get a unique invite link.
             </p>
 
-            <label className="block mt-6 text-sm font-medium text-slate-600">Community name</label>
+            <label className="block mt-6 text-sm font-medium text-slate-400">Community name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Core Contributors DAO"
-              className="w-full mt-1.5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-200"
+              className="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-500 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition"
             />
 
-            <label className="block mt-4 text-sm font-medium text-slate-600">Description (optional)</label>
+            <label className="block mt-4 text-sm font-medium text-slate-400">Description (optional)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="What is this community about?"
-              className="w-full mt-1.5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-400 resize-none"
+              className="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-500 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 resize-none transition"
             />
 
-            {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
+            {error && <p className="text-sm text-red-400 mt-3">{error}</p>}
 
             <button
               onClick={handleCreate}
               disabled={!name.trim() || submitting}
-              className="mt-6 w-full flex items-center justify-center gap-2 bg-violet-600 text-white font-medium rounded-xl py-3 hover:bg-violet-700 transition disabled:bg-slate-200 disabled:text-slate-400"
+              className="mt-6 w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-medium rounded-xl py-3 hover:bg-brand-500 transition shadow-glow disabled:bg-white/10 disabled:text-slate-500 disabled:shadow-none"
             >
               {submitting && <Loader2 size={16} className="animate-spin" />}
               {submitting ? "Waiting for signature..." : "Create community"}
@@ -84,17 +84,17 @@ export const CreateCommunityModal: FC<Props> = ({ onClose }) => {
           </>
         ) : (
           <>
-            <h2 className="text-xl font-semibold text-brand-900">Community created </h2>
-            <p className="text-sm text-slate-500 mt-1">Share this invite link so others can join.</p>
-            <div className="mt-5 flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-3 bg-slate-50">
-              <span className="text-sm text-slate-600 truncate flex-1">{createdInvite}</span>
-              <button onClick={handleCopy} className="text-violet-600 shrink-0">
+            <h2 className="font-display text-xl font-semibold text-white">Community created</h2>
+            <p className="text-sm text-slate-400 mt-1">Share this invite link so others can join.</p>
+            <div className="mt-5 flex items-center gap-2 border border-white/10 rounded-xl px-4 py-3 bg-white/5">
+              <span className="text-sm font-mono text-slate-300 truncate flex-1">{createdInvite}</span>
+              <button onClick={handleCopy} className="text-brand-300 hover:text-brand-200 shrink-0 transition">
                 {copied ? <Check size={18} /> : <Copy size={18} />}
               </button>
             </div>
             <button
               onClick={onClose}
-              className="mt-6 w-full bg-violet-900 text-white font-medium rounded-xl py-3 hover:bg-violet-600 transition"
+              className="mt-6 w-full bg-brand-600 text-white font-medium rounded-xl py-3 hover:bg-brand-500 transition shadow-glow"
             >
               Done
             </button>

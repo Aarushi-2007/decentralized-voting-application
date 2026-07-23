@@ -50,7 +50,7 @@ export const ProposalCard: FC<Props> = ({
 
   if (loading) {
     return (
-      <div className="bg-white border border-black/5 rounded-2xl p-5 shadow-soft flex items-center gap-2 text-slate-400 text-sm">
+      <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-soft flex items-center gap-2 text-slate-400 text-sm">
         <Loader2 size={16} className="animate-spin" /> Loading proposal...
       </div>
     );
@@ -58,7 +58,7 @@ export const ProposalCard: FC<Props> = ({
 
   if (!proposal) {
     return (
-      <div className="bg-white border border-black/5 rounded-2xl p-5 shadow-soft text-sm text-slate-400">
+      <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-soft text-sm text-slate-400">
         {error ?? "Proposal unavailable."}
       </div>
     );
@@ -111,16 +111,16 @@ export const ProposalCard: FC<Props> = ({
   };
 
   return (
-    <div className="bg-white border border-black/5 rounded-2xl p-5 shadow-soft">
+    <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-soft">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="font-semibold text-brand-900">{proposal.title}</h3>
+          <h3 className="font-display font-semibold text-white">{proposal.title}</h3>
           {proposal.description && (
-            <p className="text-sm text-slate-500 mt-1">{proposal.description}</p>
+            <p className="text-sm text-slate-400 mt-1">{proposal.description}</p>
           )}
         </div>
         {proposal.finalized && (
-          <span className="shrink-0 flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+          <span className="shrink-0 flex items-center gap-1 text-xs font-medium text-emerald-300 bg-emerald-500/10 border border-emerald-400/20 px-2.5 py-1 rounded-full">
             <CheckCircle2 size={14} /> Finalized
           </span>
         )}
@@ -136,21 +136,21 @@ export const ProposalCard: FC<Props> = ({
               key={i}
               onClick={() => handleVote(i)}
               disabled={hasVotedGlobally || proposal.finalized || pendingAction !== null}
-              className="w-full relative overflow-hidden rounded-xl border border-slate-200 disabled:cursor-default group"
+              className="w-full relative overflow-hidden rounded-xl border border-white/10 disabled:cursor-default group hover:border-white/20 transition-colors"
             >
               <div
-                className={`absolute inset-y-0 left-0 transition-all ${
-                  isWinner ? "bg-emerald-50" : "bg-brand-50"
+                className={`absolute inset-y-0 left-0 transition-all duration-500 ${
+                  isWinner ? "bg-emerald-500/15" : "bg-brand-500/15"
                 }`}
                 style={{ width: `${pct}%` }}
               />
               <div className="relative flex items-center justify-between px-4 py-2.5">
-                <span className="text-sm font-medium text-brand-900 flex items-center gap-1.5">
+                <span className="text-sm font-medium text-white flex items-center gap-1.5">
                   {pendingAction === `vote-${i}` && <Loader2 size={14} className="animate-spin" />}
                   {option}
-                  {isWinner && <Flag size={14} className="text-emerald-600" />}
+                  {isWinner && <Flag size={14} className="text-emerald-400" />}
                 </span>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs font-mono text-slate-400">
                   {count} vote{count !== 1 ? "s" : ""} · {pct}%
                 </span>
               </div>
@@ -159,21 +159,21 @@ export const ProposalCard: FC<Props> = ({
         })}
       </div>
 
-      {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
+      {error && <p className="text-sm text-red-400 mt-3">{error}</p>}
 
       <div className="flex items-center justify-between mt-3">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-500">
           {totalVotes} total vote{totalVotes !== 1 ? "s" : ""} ·{" "}
           {votingClosed
             ? "Voting closed"
             : `Closes ${new Date(proposal.endTime * 1000).toLocaleString()}`}
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           {votingClosed && !proposal.finalized && (
             <button
               onClick={handleFinalize}
               disabled={pendingAction !== null}
-              className="text-xs font-medium text-brand-600 hover:text-brand-500"
+              className="text-xs font-medium text-brand-300 hover:text-brand-200 transition"
             >
               Finalize
             </button>
@@ -182,7 +182,7 @@ export const ProposalCard: FC<Props> = ({
             <button
               onClick={handleClose}
               disabled={pendingAction !== null}
-              className="text-xs font-medium text-slate-400 hover:text-red-500 flex items-center gap-1"
+              className="text-xs font-medium text-slate-500 hover:text-red-400 flex items-center gap-1 transition"
             >
               <XCircle size={14} /> Close
             </button>

@@ -11,6 +11,7 @@ import { hasWalletVoted } from "../services/votingService";
 import { getCommunity, buildInviteLink, addProposalToCommunity } from "../services/communityApi";
 import { type Community } from "../types";
 import { ArrowLeft, Plus, Copy, Check, Info, Loader2 } from "lucide-react";
+import DarkVeil from "../components/DarkVeil";
 
 export const CommunityDetail: FC = () => {
   const { invite_code } = useParams();
@@ -86,10 +87,13 @@ export const CommunityDetail: FC = () => {
 
   if (loadingCommunity) {
     return (
-      <div className="min-h-screen bg-[#f6f5ff]">
-        <Navbar />
-        <div className="max-w-4xl mx-auto px-6 py-16 flex items-center gap-2 text-slate-400 text-sm">
-          <Loader2 size={16} className="animate-spin" /> Loading community...
+      <div className="relative min-h-screen overflow-hidden">
+        <DarkVeil hueShift={12} noiseIntensity={0} scanlineIntensity={0} speed={0.5} scanlineFrequency={0} warpAmount={0} />
+        <div className="relative z-10 min-h-screen">
+          <Navbar />
+          <div className="max-w-4xl mx-auto px-6 py-16 flex items-center gap-2 text-slate-400 text-sm">
+            <Loader2 size={16} className="animate-spin" /> Loading community...
+          </div>
         </div>
       </div>
     );
@@ -97,10 +101,13 @@ export const CommunityDetail: FC = () => {
 
   if (loadError || !community) {
     return (
-      <div className="min-h-screen bg-[#f6f5ff]">
-        <Navbar />
-        <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-500">
-          {loadError ?? "Community not found, or you're not a member of it."}
+      <div className="relative min-h-screen overflow-hidden">
+        <DarkVeil hueShift={12} noiseIntensity={0} scanlineIntensity={0} speed={0.5} scanlineFrequency={0} warpAmount={0} />
+        <div className="relative z-10 min-h-screen">
+          <Navbar />
+          <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-400">
+            {loadError ?? "Community not found, or you're not a member of it."}
+          </div>
         </div>
       </div>
     );
@@ -110,91 +117,98 @@ export const CommunityDetail: FC = () => {
 
   if (!isMember) {
     return (
-      <div className="min-h-screen bg-[#f6f5ff]">
-        <Navbar />
-        <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-500">
-          You need to join this community with an invite link before you can view it.
+      <div className="relative min-h-screen overflow-hidden">
+        <DarkVeil hueShift={12} noiseIntensity={0} scanlineIntensity={0} speed={0.5} scanlineFrequency={0} warpAmount={0} />
+        <div className="relative z-10 min-h-screen">
+          <Navbar />
+          <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-400">
+            You need to join this community with an invite link before you can view it.
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f5ff]">
-      <Navbar />
-      <div className="max-w-4xl mx-auto px-6 py-10">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand-600"
-        >
-          <ArrowLeft size={16} /> Back to dashboard
-        </button>
+    <div className="relative min-h-screen overflow-hidden">
+      <DarkVeil hueShift={12} noiseIntensity={0} scanlineIntensity={0} speed={0.5} scanlineFrequency={0} warpAmount={0} />
 
-        <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-brand-900">{community.name}</h1>
-            {community.description && (
-              <p className="text-sm text-slate-500 mt-1">{community.description}</p>
-            )}
+      <div className="relative z-10 min-h-screen">
+        <Navbar />
+        <div className="max-w-4xl mx-auto px-6 py-10">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-brand-300 transition"
+          >
+            <ArrowLeft size={16} /> Back to dashboard
+          </button>
+
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="font-display text-2xl font-semibold text-white tracking-tight">{community.name}</h1>
+              {community.description && (
+                <p className="text-sm text-slate-400 mt-1">{community.description}</p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCopyInvite}
+                className="flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 text-white font-medium rounded-xl px-4 py-2.5 hover:bg-white/10 hover:border-white/20 transition"
+              >
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                Invite link
+              </button>
+              <button
+                onClick={() => setShowCreateProposal(true)}
+                className="flex items-center gap-2 bg-brand-600 text-white font-medium rounded-xl px-4 py-2.5 hover:bg-brand-500 transition shadow-glow"
+              >
+                <Plus size={16} /> New proposal
+              </button>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={handleCopyInvite}
-              className="flex items-center gap-2 bg-white border border-slate-200 text-brand-900 font-medium rounded-xl px-4 py-2.5 hover:border-brand-300 transition"
-            >
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-              Invite link
-            </button>
-            <button
-              onClick={() => setShowCreateProposal(true)}
-              className="flex items-center gap-2 bg-brand-600 text-white font-medium rounded-xl px-4 py-2.5 hover:bg-brand-500 transition"
-            >
-              <Plus size={16} /> New proposal
-            </button>
-          </div>
+
+          {hasVotedGlobally && (
+            <div className="mt-4 flex items-start gap-2 bg-white/[0.04] backdrop-blur-xl border border-white/10 text-slate-400 text-sm rounded-xl px-4 py-3">
+              <Info size={16} className="shrink-0 mt-0.5 text-brand-300" />
+              This wallet has already cast its vote. The connected contract currently allows one
+              vote per wallet total (not per proposal) — voting is disabled everywhere until that's
+              changed on-chain.
+            </div>
+          )}
+
+          <h2 className="mt-8 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Active proposals
+          </h2>
+
+          {community.proposals.length === 0 ? (
+            <div className="mt-4 bg-white/[0.04] backdrop-blur-xl border border-dashed border-white/15 rounded-2xl p-10 text-center">
+              <p className="text-slate-400">No proposals yet. Create the first one.</p>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {community.proposals.map((addr) => (
+                <ProposalCard
+                  key={addr}
+                  proposalAddress={addr}
+                  wallet={address}
+                  hasVotedGlobally={hasVotedGlobally}
+                  onVoted={() => setHasVotedGlobally(true)}
+                  onClosed={handleProposalClosed}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        {hasVotedGlobally && (
-          <div className="mt-4 flex items-start gap-2 bg-slate-50 border border-slate-200 text-slate-500 text-sm rounded-xl px-4 py-3">
-            <Info size={16} className="shrink-0 mt-0.5" />
-            This wallet has already cast its vote. The connected contract currently allows one
-            vote per wallet total (not per proposal) — voting is disabled everywhere until that's
-            changed on-chain.
-          </div>
-        )}
-
-        <h2 className="mt-8 text-sm font-semibold text-slate-500 uppercase tracking-wide">
-          Active proposals
-        </h2>
-
-        {community.proposals.length === 0 ? (
-          <div className="mt-4 bg-white border border-dashed border-slate-200 rounded-2xl p-10 text-center">
-            <p className="text-slate-500">No proposals yet. Create the first one.</p>
-          </div>
-        ) : (
-          <div className="mt-4 space-y-4">
-            {community.proposals.map((addr) => (
-              <ProposalCard
-                key={addr}
-                proposalAddress={addr}
-                wallet={address}
-                hasVotedGlobally={hasVotedGlobally}
-                onVoted={() => setHasVotedGlobally(true)}
-                onClosed={handleProposalClosed}
-              />
-            ))}
-          </div>
+        {showCreateProposal && (
+          <CreateProposalModal
+            communityId={community._id}
+            wallet={address}
+            onClose={() => setShowCreateProposal(false)}
+            onCreated={handleProposalCreated}
+          />
         )}
       </div>
-
-      {showCreateProposal && (
-        <CreateProposalModal
-          communityId={community._id}
-          wallet={address}
-          onClose={() => setShowCreateProposal(false)}
-          onCreated={handleProposalCreated}
-        />
-      )}
     </div>
   );
 };

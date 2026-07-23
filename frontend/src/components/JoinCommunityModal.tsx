@@ -33,7 +33,7 @@ export const JoinCommunityModal: FC<Props> = ({ onClose, onJoined }) => {
       const auth = await sign("join_community");
       const community = await joinCommunity(code, auth);
       onJoined(community.invite_code);
-      console.log("community= ",community );
+      console.log("community= ", community);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't join that community.");
     } finally {
@@ -42,14 +42,14 @@ export const JoinCommunityModal: FC<Props> = ({ onClose, onJoined }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-30 px-4">
-      <div className="bg-white rounded-2xl shadow-soft w-full max-w-md p-6 relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30 px-4">
+      <div className="bg-ink-900 border border-white/10 rounded-2xl shadow-soft w-full max-w-md p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white transition">
           <X size={20} />
         </button>
 
-        <h2 className="text-xl font-semibold text-brand-900">Join a community</h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <h2 className="font-display text-xl font-semibold text-white">Join a community</h2>
+        <p className="text-sm text-slate-400 mt-1">
           Paste the invite link or code someone shared with you. You'll sign a message with Phantom to confirm.
         </p>
 
@@ -60,14 +60,14 @@ export const JoinCommunityModal: FC<Props> = ({ onClose, onJoined }) => {
             setError(null);
           }}
           placeholder="https://vota.app/join/ABCD1234"
-          className="w-full mt-5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-400"
+          className="w-full mt-5 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-500 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition"
         />
-        {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+        {error && <p className="text-sm text-red-400 mt-2">{error}</p>}
 
         <button
           onClick={handleJoin}
           disabled={submitting}
-          className="mt-6 w-full flex items-center justify-center gap-2 bg-brand-600 disabled:bg-slate-200 text-white font-medium rounded-xl py-3 hover:bg-brand-500 transition"
+          className="mt-6 w-full flex items-center justify-center gap-2 bg-brand-600 disabled:bg-white/10 disabled:text-slate-500 disabled:shadow-none text-white font-medium rounded-xl py-3 hover:bg-brand-500 transition shadow-glow"
         >
           {submitting && <Loader2 size={16} className="animate-spin" />}
           {submitting ? "Waiting for signature..." : "Join community"}

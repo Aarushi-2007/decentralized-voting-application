@@ -5,6 +5,7 @@ import { useAuthWallet } from "../hooks/UseAuthWallet";
 import { useWalletAuth } from "../hooks/useWalletAuth";
 // import { useAppData } from "../context/AppDataContext";
 import { joinCommunity } from "../services/communityApi";
+import DarkVeil from "../components/DarkVeil";
 
 export const JoinByLink: FC = () => {
   const { invite_code } = useParams();
@@ -14,7 +15,7 @@ export const JoinByLink: FC = () => {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
-  const [previewName ] = useState<string | null>(null);
+  const [previewName] = useState<string | null>(null);
 
   // Best-effort preview so the visitor sees which community they're
   // joining before they've even connected a wallet.
@@ -43,21 +44,23 @@ export const JoinByLink: FC = () => {
   }, [connected, address, invite_code]);
 
   return (
-    <div className="min-h-screen bg-[#f6f5ff] flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-soft p-8 max-w-md w-full text-center">
-        <h1 className="text-xl font-semibold text-brand-900">
+    <div className="relative min-h-screen overflow-hidden flex items-center justify-center px-4">
+      <DarkVeil hueShift={12} noiseIntensity={0} scanlineIntensity={0} speed={0.5} scanlineFrequency={0} warpAmount={0} />
+
+      <div className="relative z-10 bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl shadow-soft p-8 max-w-md w-full text-center">
+        <h1 className="font-display text-xl font-semibold text-white">
           You've been invited{previewName ? ` to ${previewName}` : ""}
         </h1>
-        <p className="text-sm text-slate-500 mt-2">
+        <p className="text-sm text-slate-400 mt-2">
           Sign in with Phantom, then sign a message to confirm you own this wallet.
         </p>
         <div className="mt-6 flex justify-center">
           <WalletMultiButton />
         </div>
         {joining && !error && (
-          <p className="text-sm text-slate-400 mt-4">Joining community...</p>
+          <p className="text-sm text-slate-500 mt-4">Joining community...</p>
         )}
-        {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
+        {error && <p className="text-sm text-red-400 mt-4">{error}</p>}
       </div>
     </div>
   );

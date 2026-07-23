@@ -1,0 +1,4496 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+backend/
+  controllers/
+    communityController.js
+  models/
+    community.js
+  routes/
+    communityRoutes.js
+  utils/
+    generateInviteCode.js
+  .gitignore
+  db.js
+  package.json
+  server.js
+frontend/
+  public/
+    favicon.svg
+    icons.svg
+  src/
+    anchor/
+      idl.json
+      pda.ts
+      useProgram.ts
+    assets/
+      hero.png
+      react.svg
+      vite.svg
+    components/
+      CommunityCard.tsx
+      CreateCommunityModal.tsx
+      CreateProposalModal.tsx
+      DarkVeil.css
+      DarkVeil.tsx
+      JoinCommunityModal.tsx
+      Navbar.tsx
+      ProposalCard.tsx
+    context/
+      AppDataContext.tsx
+      WalletContextProvider.tsx
+    hooks/
+      UseAuthWallet.ts
+      useWalletAuth.ts
+    pages/
+      CommunityDetail.tsx
+      Dashboard.tsx
+      JoinByLink.tsx
+      Landing.tsx
+    services/
+      communityApi.ts
+      votingService.ts
+    types/
+      index.ts
+    utils/
+      id.ts
+      walletAuth.ts
+    App.css
+    App.tsx
+    index.css
+    main.tsx
+  .env
+  .gitignore
+  .oxlintrc.json
+  index.html
+  package.json
+  README.md
+  tsconfig.app.json
+  tsconfig.json
+  tsconfig.node.json
+  vite.config.ts
+smart_contract/
+  migrations/
+    deploy.ts
+  programs/
+    smart_contract/
+      src/
+        instructions/
+          cast_vote.rs
+          close_proposal.rs
+          create_proposal.rs
+          finalize_proposal.rs
+          initialize.rs
+          mod.rs
+        state/
+          mod.rs
+          proposal.rs
+          vote.rs
+        constants.rs
+        errors.rs
+        lib.rs
+      tests/
+        test_cast_vote.rs
+        test_close_proposal.rs
+        test_create_proposal.rs
+        test_finalize_proposal.rs
+        test_initialize.rs
+      Cargo.toml
+  .gitignore
+  .prettierignore
+  Anchor.toml
+  Cargo.toml
+  package.json
+  repomix-output.xml
+  rust-toolchain.toml
+  tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="backend/controllers/communityController.js">
+const Community = require('../models/community');
+const generateInviteCode = require('../utils/generateInviteCode');
+
+//Create a new community
+const createCommunity= async(req,res) => {
+
+    try{
+        const { name,description }= req.body;
+
+        const newCommunity= new Community({
+            name,
+            description,
+            invite_code: generateInviteCode(),
+            proposals: [],
+        });
+
+        const savedCommunity= await newCommunity.save();
+
+        res.status(200).json(savedCommunity);
+    }catch(err){
+        console.log(err);
+        res.status(500).json({
+            error: "Internal server error",
+        });
+    }
+};
+
+//Add Proposal PDA to community
+const addProposalToCommunity= async(req,res) => {
+    try{
+        const { proposalAddress }= req.body;
+
+        const community= await Community.findById(req.params._id);
+
+        if(!community){
+            return res.status(404).json({
+                error: 'Community not found',
+            });
+        }
+
+        community.proposals.push(proposalAddress);
+
+        await community.save();
+
+        res.status(200).json(community);
+    }catch(err){
+        console.log(err);
+        res.status(500).json({
+            error: 'Internal server error',
+        });
+    }
+}
+
+//Join a community by invite link
+const joinCommunity= async(req,res) => {
+    try{
+        const{ invite_code }= req.params;
+        const { wallet }= req.body;
+
+        const community= await Community.findOne({invite_code});
+
+        if(!community){
+            return res.status(404).json({
+                error: 'Community not found',
+            });
+        }
+
+        if(community.members.includes(wallet)){
+            return res.status(404).json({
+                error: 'Already joined this community',
+            });
+        }
+
+        community.members.push(wallet);
+
+        await community.save();
+
+        res.status(200).json(community);
+    }catch(err){
+        console.log(err);
+        res.status(500).json({
+            error: 'Internal server error',
+        });
+    }
+};
+
+//Get your joined communities
+
+const getJoinedCommunities= async(req,res) => {
+    try{
+        const { wallet }= req.params;
+
+        const communities= await Community.find({
+            members: wallet,
+        });
+
+        res.status(200).json(communities);
+    }catch(err){
+        console.log(err);
+
+        res.status(500).json({
+            error: "Internal server error",
+        });
+    };
+}
+
+const getCommunity= async(req,res) => {
+    try{
+        const{ invite_code }= req.params;
+        const community= await Community.findOne({invite_code});
+
+        if(!community){
+            return res.status(404).json({
+                error: 'Community not found',
+            });
+        }
+
+        res.status(200).json(community);
+    }catch(err){
+        console.log(err);
+
+        res.status(500).json({
+            error: 'Internal server error',
+        });
+    }
+}
+
+
+module.exports= {
+    createCommunity,
+    addProposalToCommunity,
+    joinCommunity,
+    getJoinedCommunities,
+    getCommunity,
+}
+</file>
+
+<file path="backend/models/community.js">
+const mongoose= require('mongoose');
+
+const communitySchema= new mongoose.Schema({
+    name: {
+        type: String,
+        required: true
+    },
+    description: {
+        type: String,
+    },
+    invite_code: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    proposals: {
+        type: [String],
+        default: [],
+    },
+    members: {
+        type: [String],
+        default: []
+    },
+});
+
+const Community= mongoose.model('Community',communitySchema);
+module.exports= Community;
+</file>
+
+<file path="backend/routes/communityRoutes.js">
+const express= require('express');
+const router= express.Router();
+const Community= require('./../models/community');
+
+
+const {
+    createCommunity,
+    addProposalToCommunity,
+    joinCommunity,
+    getJoinedCommunities,
+    getCommunity,
+}= require('./../controllers/communityController');
+
+//Create a new community
+router.post('/', createCommunity);
+
+//Join a community
+router.post('/join/:invite_code', joinCommunity);
+
+//Add a proposal to the community
+router.post('/:_id/proposals', addProposalToCommunity);
+
+//Get your joined communities
+router.get('/user/:wallet', getJoinedCommunities);
+
+//Get the community you clicked on
+router.get('/:invite_code',getCommunity);
+
+module.exports= router;
+</file>
+
+<file path="backend/utils/generateInviteCode.js">
+const crypto= require("crypto");
+
+const generateInviteCode= (length= 8)=> {
+    const chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+    let code= "";
+    
+    for(let i=0;i<length;i++){
+        const randomIndex= crypto.randomInt(0, chars.length);
+        code+=chars[randomIndex];
+    }
+
+    return code;
+}
+
+module.exports= generateInviteCode;
+</file>
+
+<file path="backend/.gitignore">
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+
+# Coverage
+coverage/
+</file>
+
+<file path="backend/db.js">
+const mongoose= require('mongoose');
+require('dotenv').config();
+
+const mongoURL= process.env.DB_URL;
+mongoose.connect(mongoURL);
+
+const db= mongoose.connection;
+
+db.on('connected', ()=> {
+    console.log("Connected to MongoDB server");
+})
+
+db.on('error', (err)=> {
+    console.log("MongoDB connection error: ", err);
+})
+
+db.on('disconnected', ()=> {
+    console.log("Disconnected from MongoDB server");
+})
+
+
+module.exports= db;
+</file>
+
+<file path="backend/package.json">
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "crypto": "^1.0.1",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.7.4",
+    "router": "^2.2.0"
+  }
+}
+</file>
+
+<file path="backend/server.js">
+const express= require('express');
+const cors= require('cors');
+const communityRoutes= require('./routes/communityRoutes');
+
+require('dotenv').config();
+
+const app= express();
+const db= require('./db');
+
+app.use(express.json());
+app.use(
+    cors({
+        origin:"http://localhost:5173",
+        credentials: true,
+    })
+);
+
+app.use('/api/communities', communityRoutes);
+
+const PORT= process.env.PORT;
+app.listen(PORT, ()=> {
+    console.log(`Listening on PORT ${PORT}`)
+})
+</file>
+
+<file path="frontend/public/favicon.svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="46" fill="none" viewBox="0 0 48 46"><path fill="#863bff" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z" style="fill:#863bff;fill:color(display-p3 .5252 .23 1);fill-opacity:1"/><mask id="a" width="48" height="46" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><path fill="#000" d="M25.842 44.938c-.664.844-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.183c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.498 0-3.579-1.842-3.579H1.133c-.92 0-1.456-1.04-.92-1.787L9.91.473c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.578 1.842 3.578h11.377c.943 0 1.473 1.088.89 1.832L25.843 44.94z" style="fill:#000;fill-opacity:1"/></mask><g mask="url(#a)"><g filter="url(#b)"><ellipse cx="5.508" cy="14.704" fill="#ede6ff" rx="5.508" ry="14.704" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -4.47 31.516)"/></g><g filter="url(#c)"><ellipse cx="10.399" cy="29.851" fill="#ede6ff" rx="10.399" ry="29.851" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -39.328 7.883)"/></g><g filter="url(#d)"><ellipse cx="5.508" cy="30.487" fill="#7e14ff" rx="5.508" ry="30.487" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -25.913 -14.639)scale(1 -1)"/></g><g filter="url(#e)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -32.644 -3.334)scale(1 -1)"/></g><g filter="url(#f)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -34.34 30.47)"/></g><g filter="url(#g)"><ellipse cx="14.072" cy="22.078" fill="#ede6ff" rx="14.072" ry="22.078" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="rotate(93.35 24.506 48.493)scale(-1 1)"/></g><g filter="url(#h)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#i)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#j)"><ellipse cx=".387" cy="8.972" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(39.51 .387 8.972)"/></g><g filter="url(#k)"><ellipse cx="47.523" cy="-6.092" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 47.523 -6.092)"/></g><g filter="url(#l)"><ellipse cx="41.412" cy="6.333" fill="#47bfff" rx="5.971" ry="9.665" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 41.412 6.333)"/></g><g filter="url(#m)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#n)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#o)"><ellipse cx="35.651" cy="29.907" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 35.651 29.907)"/></g><g filter="url(#p)"><ellipse cx="38.418" cy="32.4" fill="#47bfff" rx="5.971" ry="15.297" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 38.418 32.4)"/></g></g><defs><filter id="b" width="60.045" height="41.654" x="-19.77" y="16.149" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="c" width="90.34" height="51.437" x="-54.613" y="-7.533" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="d" width="79.355" height="29.4" x="-49.64" y="2.03" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="e" width="79.579" height="29.4" x="-45.045" y="20.029" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="f" width="79.579" height="29.4" x="-43.513" y="21.178" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="g" width="74.749" height="58.852" x="15.756" y="-17.901" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="h" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="i" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="j" width="56.045" height="63.649" x="-27.636" y="-22.853" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="k" width="54.814" height="64.646" x="20.116" y="-38.415" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="l" width="33.541" height="35.313" x="24.641" y="-11.323" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="m" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="n" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="o" width="54.814" height="64.646" x="8.244" y="-2.416" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="p" width="39.409" height="43.623" x="18.713" y="10.588" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter></defs></svg>
+</file>
+
+<file path="frontend/public/icons.svg">
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="bluesky-icon" viewBox="0 0 16 17">
+    <g clip-path="url(#bluesky-clip)"><path fill="#08060d" d="M7.75 7.735c-.693-1.348-2.58-3.86-4.334-5.097-1.68-1.187-2.32-.981-2.74-.79C.188 2.065.1 2.812.1 3.251s.241 3.602.398 4.13c.52 1.744 2.367 2.333 4.07 2.145-2.495.37-4.71 1.278-1.805 4.512 3.196 3.309 4.38-.71 4.987-2.746.608 2.036 1.307 5.91 4.93 2.746 2.72-2.746.747-4.143-1.747-4.512 1.702.189 3.55-.4 4.07-2.145.156-.528.397-3.691.397-4.13s-.088-1.186-.575-1.406c-.42-.19-1.06-.395-2.741.79-1.755 1.24-3.64 3.752-4.334 5.099"/></g>
+    <defs><clipPath id="bluesky-clip"><path fill="#fff" d="M.1.85h15.3v15.3H.1z"/></clipPath></defs>
+  </symbol>
+  <symbol id="discord-icon" viewBox="0 0 20 19">
+    <path fill="#08060d" d="M16.224 3.768a14.5 14.5 0 0 0-3.67-1.153c-.158.286-.343.67-.47.976a13.5 13.5 0 0 0-4.067 0c-.128-.306-.317-.69-.476-.976A14.4 14.4 0 0 0 3.868 3.77C1.546 7.28.916 10.703 1.231 14.077a14.7 14.7 0 0 0 4.5 2.306q.545-.748.965-1.587a9.5 9.5 0 0 1-1.518-.74q.191-.14.372-.293c2.927 1.369 6.107 1.369 8.999 0q.183.152.372.294-.723.437-1.52.74.418.838.963 1.588a14.6 14.6 0 0 0 4.504-2.308c.37-3.911-.63-7.302-2.644-10.309m-9.13 8.234c-.878 0-1.599-.82-1.599-1.82 0-.998.705-1.82 1.6-1.82.894 0 1.614.82 1.599 1.82.001 1-.705 1.82-1.6 1.82m5.91 0c-.878 0-1.599-.82-1.599-1.82 0-.998.705-1.82 1.6-1.82.893 0 1.614.82 1.599 1.82 0 1-.706 1.82-1.6 1.82"/>
+  </symbol>
+  <symbol id="documentation-icon" viewBox="0 0 21 20">
+    <path fill="none" stroke="#aa3bff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" d="m15.5 13.333 1.533 1.322c.645.555.967.833.967 1.178s-.322.623-.967 1.179L15.5 18.333m-3.333-5-1.534 1.322c-.644.555-.966.833-.966 1.178s.322.623.966 1.179l1.534 1.321"/>
+    <path fill="none" stroke="#aa3bff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" d="M17.167 10.836v-4.32c0-1.41 0-2.117-.224-2.68-.359-.906-1.118-1.621-2.08-1.96-.599-.21-1.349-.21-2.848-.21-2.623 0-3.935 0-4.983.369-1.684.591-3.013 1.842-3.641 3.428C3 6.449 3 7.684 3 10.154v2.122c0 2.558 0 3.838.706 4.726q.306.383.713.671c.76.536 1.79.64 3.581.66"/>
+    <path fill="none" stroke="#aa3bff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" d="M3 10a2.78 2.78 0 0 1 2.778-2.778c.555 0 1.209.097 1.748-.047.48-.129.854-.503.982-.982.145-.54.048-1.194.048-1.749a2.78 2.78 0 0 1 2.777-2.777"/>
+  </symbol>
+  <symbol id="github-icon" viewBox="0 0 19 19">
+    <path fill="#08060d" fill-rule="evenodd" d="M9.356 1.85C5.05 1.85 1.57 5.356 1.57 9.694a7.84 7.84 0 0 0 5.324 7.44c.387.079.528-.168.528-.376 0-.182-.013-.805-.013-1.454-2.165.467-2.616-.935-2.616-.935-.349-.91-.864-1.143-.864-1.143-.71-.48.051-.48.051-.48.787.051 1.2.805 1.2.805.695 1.194 1.817.857 2.268.649.064-.507.27-.857.49-1.052-1.728-.182-3.545-.857-3.545-3.87 0-.857.31-1.558.8-2.104-.078-.195-.349-1 .077-2.078 0 0 .657-.208 2.14.805a7.5 7.5 0 0 1 1.946-.26c.657 0 1.328.092 1.946.26 1.483-1.013 2.14-.805 2.14-.805.426 1.078.155 1.883.078 2.078.502.546.799 1.247.799 2.104 0 3.013-1.818 3.675-3.558 3.87.284.247.528.714.528 1.454 0 1.052-.012 1.896-.012 2.156 0 .208.142.455.528.377a7.84 7.84 0 0 0 5.324-7.441c.013-4.338-3.48-7.844-7.773-7.844" clip-rule="evenodd"/>
+  </symbol>
+  <symbol id="social-icon" viewBox="0 0 20 20">
+    <path fill="none" stroke="#aa3bff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" d="M12.5 6.667a4.167 4.167 0 1 0-8.334 0 4.167 4.167 0 0 0 8.334 0"/>
+    <path fill="none" stroke="#aa3bff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" d="M2.5 16.667a5.833 5.833 0 0 1 8.75-5.053m3.837.474.513 1.035c.07.144.257.282.414.309l.93.155c.596.1.736.536.307.965l-.723.73a.64.64 0 0 0-.152.531l.207.903c.164.715-.213.991-.84.618l-.872-.52a.63.63 0 0 0-.577 0l-.872.52c-.624.373-1.003.094-.84-.618l.207-.903a.64.64 0 0 0-.152-.532l-.723-.729c-.426-.43-.289-.864.306-.964l.93-.156a.64.64 0 0 0 .412-.31l.513-1.034c.28-.562.735-.562 1.012 0"/>
+  </symbol>
+  <symbol id="x-icon" viewBox="0 0 19 19">
+    <path fill="#08060d" fill-rule="evenodd" d="M1.893 1.98c.052.072 1.245 1.769 2.653 3.77l2.892 4.114c.183.261.333.48.333.486s-.068.089-.152.183l-.522.593-.765.867-3.597 4.087c-.375.426-.734.834-.798.905a1 1 0 0 0-.118.148c0 .01.236.017.664.017h.663l.729-.83c.4-.457.796-.906.879-.999a692 692 0 0 0 1.794-2.038c.034-.037.301-.34.594-.675l.551-.624.345-.392a7 7 0 0 1 .34-.374c.006 0 .93 1.306 2.052 2.903l2.084 2.965.045.063h2.275c1.87 0 2.273-.003 2.266-.021-.008-.02-1.098-1.572-3.894-5.547-2.013-2.862-2.28-3.246-2.273-3.266.008-.019.282-.332 2.085-2.38l2-2.274 1.567-1.782c.022-.028-.016-.03-.65-.03h-.674l-.3.342a871 871 0 0 1-1.782 2.025c-.067.075-.405.458-.75.852a100 100 0 0 1-.803.91c-.148.172-.299.344-.99 1.127-.304.343-.32.358-.345.327-.015-.019-.904-1.282-1.976-2.808L6.365 1.85H1.8zm1.782.91 8.078 11.294c.772 1.08 1.413 1.973 1.425 1.984.016.017.241.02 1.05.017l1.03-.004-2.694-3.766L7.796 5.75 5.722 2.852l-1.039-.004-1.039-.004z" clip-rule="evenodd"/>
+  </symbol>
+</svg>
+</file>
+
+<file path="frontend/src/anchor/idl.json">
+{
+  "address": "6HF7SL2ydXxthwKgFmw5ELh9QzkgrTav7AWEuKcCqh5S",
+  "metadata": {
+    "name": "smart_contract",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "cast_vote",
+      "discriminator": [
+        20,
+        212,
+        15,
+        189,
+        69,
+        180,
+        69,
+        151
+      ],
+      "accounts": [
+        {
+          "name": "vote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "writable": true
+        },
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "option",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "close_proposal",
+      "discriminator": [
+        213,
+        178,
+        139,
+        19,
+        50,
+        191,
+        82,
+        245
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_proposal",
+      "discriminator": [
+        132,
+        116,
+        68,
+        174,
+        216,
+        160,
+        198,
+        22
+      ],
+      "accounts": [
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "options",
+          "type": {
+            "vec": "string"
+          }
+        },
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "end_time",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "finalize_proposal",
+      "discriminator": [
+        23,
+        68,
+        51,
+        167,
+        109,
+        173,
+        187,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "proposal",
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Proposal",
+      "discriminator": [
+        26,
+        94,
+        189,
+        187,
+        116,
+        136,
+        53,
+        33
+      ]
+    },
+    {
+      "name": "Vote",
+      "discriminator": [
+        96,
+        91,
+        104,
+        57,
+        145,
+        35,
+        172,
+        155
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "You are not allowed to close the proposal"
+    },
+    {
+      "code": 6001,
+      "name": "VotingStillOpen",
+      "msg": "The voting is still open"
+    },
+    {
+      "code": 6002,
+      "name": "AlreadyFinalized",
+      "msg": "The proposal has already finalized"
+    },
+    {
+      "code": 6003,
+      "name": "NoOptions",
+      "msg": "There are no options to this proposal"
+    }
+  ],
+  "types": [
+    {
+      "name": "Proposal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "options",
+            "type": {
+              "vec": "string"
+            }
+          },
+          {
+            "name": "vote_counts",
+            "type": {
+              "vec": "u64"
+            }
+          },
+          {
+            "name": "end_time",
+            "type": "i64"
+          },
+          {
+            "name": "finalized",
+            "type": "bool"
+          },
+          {
+            "name": "winning_option",
+            "type": {
+              "option": "u16"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vote",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "member",
+            "type": "pubkey"
+          },
+          {
+            "name": "option",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "SEED",
+      "type": "string",
+      "value": "\"anchor\""
+    }
+  ]
+}
+</file>
+
+<file path="frontend/src/anchor/pda.ts">
+import { PublicKey } from "@solana/web3.js";
+
+// This must match declare_id!() in lib.rs — NOTE: Anchor.toml currently
+// points to a *different* program id (B8aK6tZe...). Reconcile before deploying.
+export const PROGRAM_ID = new PublicKey("6HF7SL2ydXxthwKgFmw5ELh9QzkgrTav7AWEuKcCqh5S");
+
+export function deriveProposalPda(creator: PublicKey): [PublicKey, number] {
+  // Seeded only by creator (create_proposal.rs) — a wallet can only have
+  // ONE live proposal at a time until it's closed. Not scoped by `id`.
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("proposal"), creator.toBuffer()],
+    PROGRAM_ID
+  );
+}
+
+export function deriveVotePda(member: PublicKey): [PublicKey, number] {
+  // Seeded only by the voter (cast_vote.rs) — NOT by proposal. This means a
+  // wallet can hold only one Vote account program-wide, i.e. one vote EVER,
+  // not one vote per proposal. See README "Known contract limitations".
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("vote"), member.toBuffer()],
+    PROGRAM_ID
+  );
+}
+</file>
+
+<file path="frontend/src/anchor/useProgram.ts">
+import { useMemo } from "react";
+import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
+import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
+import idl from "./idl.json";
+
+// Returns a ready-to-use Program bound to the connected Phantom wallet, or
+// null until a wallet is connected (guarded pages already redirect if not).
+export function useProgram(): Program | null {
+  const { connection } = useConnection();
+  const wallet = useAnchorWallet();
+
+  return useMemo(() => {
+    if (!wallet) return null;
+    const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
+    return new Program(idl as Idl, provider);
+  }, [connection, wallet]);
+}
+</file>
+
+<file path="frontend/src/assets/react.svg">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+</file>
+
+<file path="frontend/src/assets/vite.svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="77" height="47" fill="none" aria-labelledby="vite-logo-title" viewBox="0 0 77 47"><title id="vite-logo-title">Vite</title><style>.parenthesis{fill:#000}@media (prefers-color-scheme:dark){.parenthesis{fill:#fff}}</style><path fill="#9135ff" d="M40.151 45.71c-.663.844-2.02.374-2.02-.699V34.708a2.26 2.26 0 0 0-2.262-2.262H24.493c-.92 0-1.457-1.04-.92-1.788l7.479-10.471c1.07-1.498 0-3.578-1.842-3.578H15.443c-.92 0-1.456-1.04-.92-1.788l9.696-13.576c.213-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.472c-1.07 1.497 0 3.578 1.842 3.578h11.376c.944 0 1.474 1.087.89 1.83L40.153 45.712z"/><mask id="a" width="48" height="47" x="14" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><path fill="#000" d="M40.047 45.71c-.663.843-2.02.374-2.02-.699V34.708a2.26 2.26 0 0 0-2.262-2.262H24.389c-.92 0-1.457-1.04-.92-1.788l7.479-10.472c1.07-1.497 0-3.578-1.842-3.578H15.34c-.92 0-1.456-1.04-.92-1.788l9.696-13.575c.213-.297.556-.474.92-.474H53.93c.92 0 1.456 1.04.92 1.788L47.37 13.03c-1.07 1.498 0 3.578 1.842 3.578h11.376c.944 0 1.474 1.088.89 1.831L40.049 45.712z"/></mask><g mask="url(#a)"><g filter="url(#b)"><ellipse cx="5.508" cy="14.704" fill="#eee6ff" rx="5.508" ry="14.704" transform="rotate(269.814 20.96 11.29)scale(-1 1)"/></g><g filter="url(#c)"><ellipse cx="10.399" cy="29.851" fill="#eee6ff" rx="10.399" ry="29.851" transform="rotate(89.814 -16.902 -8.275)scale(1 -1)"/></g><g filter="url(#d)"><ellipse cx="5.508" cy="30.487" fill="#8900ff" rx="5.508" ry="30.487" transform="rotate(89.814 -19.197 -7.127)scale(1 -1)"/></g><g filter="url(#e)"><ellipse cx="5.508" cy="30.599" fill="#8900ff" rx="5.508" ry="30.599" transform="rotate(89.814 -25.928 4.177)scale(1 -1)"/></g><g filter="url(#f)"><ellipse cx="5.508" cy="30.599" fill="#8900ff" rx="5.508" ry="30.599" transform="rotate(89.814 -25.738 5.52)scale(1 -1)"/></g><g filter="url(#g)"><ellipse cx="14.072" cy="22.078" fill="#eee6ff" rx="14.072" ry="22.078" transform="rotate(93.35 31.245 55.578)scale(-1 1)"/></g><g filter="url(#h)"><ellipse cx="3.47" cy="21.501" fill="#8900ff" rx="3.47" ry="21.501" transform="rotate(89.009 35.419 55.202)scale(-1 1)"/></g><g filter="url(#i)"><ellipse cx="3.47" cy="21.501" fill="#8900ff" rx="3.47" ry="21.501" transform="rotate(89.009 35.419 55.202)scale(-1 1)"/></g><g filter="url(#j)"><ellipse cx="14.592" cy="9.743" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(39.51 14.592 9.743)"/></g><g filter="url(#k)"><ellipse cx="61.728" cy="-5.321" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 61.728 -5.32)"/></g><g filter="url(#l)"><ellipse cx="55.618" cy="7.104" fill="#00c2ff" rx="5.971" ry="9.665" transform="rotate(37.892 55.618 7.104)"/></g><g filter="url(#m)"><ellipse cx="12.326" cy="39.103" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 12.326 39.103)"/></g><g filter="url(#n)"><ellipse cx="12.326" cy="39.103" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 12.326 39.103)"/></g><g filter="url(#o)"><ellipse cx="49.857" cy="30.678" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 49.857 30.678)"/></g><g filter="url(#p)"><ellipse cx="52.623" cy="33.171" fill="#00c2ff" rx="5.971" ry="15.297" transform="rotate(37.892 52.623 33.17)"/></g></g><path d="M6.919 0c-9.198 13.166-9.252 33.575 0 46.789h6.215c-9.25-13.214-9.196-33.623 0-46.789zm62.424 0h-6.215c9.198 13.166 9.252 33.575 0 46.789h6.215c9.25-13.214 9.196-33.623 0-46.789" class="parenthesis"/><defs><filter id="b" width="60.045" height="41.654" x="-5.564" y="16.92" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="c" width="90.34" height="51.437" x="-40.407" y="-6.762" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="d" width="79.355" height="29.4" x="-35.435" y="2.801" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="e" width="79.579" height="29.4" x="-30.84" y="20.8" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="f" width="79.579" height="29.4" x="-29.307" y="21.949" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="g" width="74.749" height="58.852" x="29.961" y="-17.13" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="h" width="61.377" height="25.362" x="37.754" y="3.055" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="i" width="61.377" height="25.362" x="37.754" y="3.055" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="j" width="56.045" height="63.649" x="-13.43" y="-22.082" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="k" width="54.814" height="64.646" x="34.321" y="-37.644" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="l" width="33.541" height="35.313" x="38.847" y="-10.552" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="m" width="54.814" height="64.646" x="-15.081" y="6.78" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="n" width="54.814" height="64.646" x="-15.081" y="6.78" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="o" width="54.814" height="64.646" x="22.45" y="-1.645" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="p" width="39.409" height="43.623" x="32.919" y="11.36" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter></defs></svg>
+</file>
+
+<file path="frontend/src/components/CreateProposalModal.tsx">
+import { type FC, useState } from "react";
+import { X, Plus, Trash2, Loader2 } from "lucide-react";
+import { PublicKey } from "@solana/web3.js";
+import { useProgram } from "../anchor/useProgram";
+import { createProposalOnChain, friendlyTxError } from "../services/votingService";
+
+interface Props {
+  communityId: string;
+  wallet: string;
+  onClose: () => void;
+  onCreated: (proposalAddress: string) => void;
+}
+
+export const CreateProposalModal: FC<Props> = ({ communityId, wallet, onClose, onCreated }) => {
+  const program = useProgram();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [options, setOptions] = useState(["Yes", "No"]);
+  const [endTime, setEndTime] = useState(""); // datetime-local string
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateOption = (i: number, value: string) =>
+    setOptions((prev) => prev.map((o, idx) => (idx === i ? value : o)));
+  const addOption = () => setOptions((prev) => (prev.length >= 5 ? prev : [...prev, ""]));
+  const removeOption = (i: number) => setOptions((prev) => prev.filter((_, idx) => idx !== i));
+
+  const canSubmit =
+    title.trim().length > 0 &&
+    options.filter((o) => o.trim()).length >= 2 &&
+    endTime.length > 0 &&
+    !submitting;
+
+  const handleSubmit = async () => {
+    if (!canSubmit || !program) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const endTimeUnix = Math.floor(new Date(endTime).getTime() / 1000);
+      const proposalAddress = await createProposalOnChain(
+        program,
+        new PublicKey(wallet),
+        title.trim(),
+        description.trim(),
+        options.map((o) => o.trim()).filter(Boolean),
+        endTimeUnix
+      );
+      onCreated(proposalAddress);
+      onClose();
+    } catch (err) {
+      setError(friendlyTxError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-30 px-4">
+      <div className="bg-white rounded-2xl shadow-soft w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+          <X size={20} />
+        </button>
+
+        <h2 className="text-xl font-semibold text-brand-900">New proposal</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          This creates a real on-chain proposal account — you'll be asked to approve a transaction in Phantom.
+        </p>
+        <p className="text-xs text-amber-600 mt-2">
+          Note: this contract allows one active proposal per wallet at a time — close your previous
+          proposal first if this fails.
+        </p>
+
+        <label className="block mt-6 text-sm font-medium text-slate-600">Title</label>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={100}
+          placeholder="Should we increase the treasury allocation?"
+          className="w-full mt-1.5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-400"
+        />
+
+        <label className="block mt-4 text-sm font-medium text-slate-600">Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          maxLength={500}
+          className="w-full mt-1.5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-400 resize-none"
+        />
+
+        <label className="block mt-4 text-sm font-medium text-slate-600">Voting closes</label>
+        <input
+          type="datetime-local"
+          value={endTime}
+          onChange={(e) => setEndTime(e.target.value)}
+          className="w-full mt-1.5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-400"
+        />
+
+        <label className="block mt-4 text-sm font-medium text-slate-600">Options (max 5)</label>
+        <div className="space-y-2 mt-1.5">
+          {options.map((opt, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                value={opt}
+                onChange={(e) => updateOption(i, e.target.value)}
+                maxLength={50}
+                className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-400"
+                placeholder={`Option ${i + 1}`}
+              />
+              {options.length > 2 && (
+                <button onClick={() => removeOption(i)} className="text-slate-400 hover:text-red-500">
+                  <Trash2 size={18} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        {options.length < 5 && (
+          <button onClick={addOption} className="mt-2 flex items-center gap-1 text-sm text-brand-600 font-medium">
+            <Plus size={16} /> Add option
+          </button>
+        )}
+
+        {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
+
+        <button
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="mt-6 w-full flex items-center justify-center gap-2 bg-brand-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-medium rounded-xl py-3 hover:bg-brand-500 transition"
+        >
+          {submitting && <Loader2 size={16} className="animate-spin" />}
+          {submitting ? "Confirming on-chain..." : "Publish proposal"}
+        </button>
+      </div>
+    </div>
+  );
+};
+</file>
+
+<file path="frontend/src/components/DarkVeil.css">
+.darkveil-canvas {
+  position: fixed;
+  inset: 0;
+
+  width: 100vw;
+  height: 100vh;
+
+  display: block;
+
+  z-index: -1;
+
+  pointer-events: none;
+}
+</file>
+
+<file path="frontend/src/components/DarkVeil.tsx">
+import { useRef, useEffect } from 'react';
+import { Renderer, Program, Mesh, Triangle, Vec2 } from 'ogl';
+import './DarkVeil.css';
+
+const vertex = `
+attribute vec2 position;
+void main(){gl_Position=vec4(position,0.0,1.0);}
+`;
+
+const fragment = `
+#ifdef GL_ES
+precision lowp float;
+#endif
+uniform vec2 uResolution;
+uniform float uTime;
+uniform float uHueShift;
+uniform float uNoise;
+uniform float uScan;
+uniform float uScanFreq;
+uniform float uWarp;
+#define iTime uTime
+#define iResolution uResolution
+
+vec4 buf[8];
+float rand(vec2 c){return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453);}
+
+mat3 rgb2yiq=mat3(0.299,0.587,0.114,0.596,-0.274,-0.322,0.211,-0.523,0.312);
+mat3 yiq2rgb=mat3(1.0,0.956,0.621,1.0,-0.272,-0.647,1.0,-1.106,1.703);
+
+vec3 hueShiftRGB(vec3 col,float deg){
+    vec3 yiq=rgb2yiq*col;
+    float rad=radians(deg);
+    float cosh=cos(rad),sinh=sin(rad);
+    vec3 yiqShift=vec3(yiq.x,yiq.y*cosh-yiq.z*sinh,yiq.y*sinh+yiq.z*cosh);
+    return clamp(yiq2rgb*yiqShift,0.0,1.0);
+}
+
+vec4 sigmoid(vec4 x){return 1./(1.+exp(-x));}
+
+vec4 cppn_fn(vec2 coordinate,float in0,float in1,float in2){
+    buf[6]=vec4(coordinate.x,coordinate.y,0.3948333106474662+in0,0.36+in1);
+    buf[7]=vec4(0.14+in2,sqrt(coordinate.x*coordinate.x+coordinate.y*coordinate.y),0.,0.);
+    buf[0]=mat4(vec4(6.5404263,-3.6126034,0.7590882,-1.13613),vec4(2.4582713,3.1660357,1.2219609,0.06276096),vec4(-5.478085,-6.159632,1.8701609,-4.7742867),vec4(6.039214,-5.542865,-0.90925294,3.251348))*buf[6]+mat4(vec4(0.8473259,-5.722911,3.975766,1.6522468),vec4(-0.24321538,0.5839259,-1.7661959,-5.350116),vec4(0.,0.,0.,0.),vec4(0.,0.,0.,0.))*buf[7]+vec4(0.21808943,1.1243913,-1.7969975,5.0294676);
+    buf[1]=mat4(vec4(-3.3522482,-6.0612736,0.55641043,-4.4719114),vec4(0.8631464,1.7432913,5.643898,1.6106541),vec4(2.4941394,-3.5012043,1.7184316,6.357333),vec4(3.310376,8.209261,1.1355612,-1.165539))*buf[6]+mat4(vec4(5.24046,-13.034365,0.009859298,15.870829),vec4(2.987511,3.129433,-0.89023495,-1.6822904),vec4(0.,0.,0.,0.),vec4(0.,0.,0.,0.))*buf[7]+vec4(-5.9457836,-6.573602,-0.8812491,1.5436668);
+    buf[0]=sigmoid(buf[0]);buf[1]=sigmoid(buf[1]);
+    buf[2]=mat4(vec4(-15.219568,8.095543,-2.429353,-1.9381982),vec4(-5.951362,4.3115187,2.6393783,1.274315),vec4(-7.3145227,6.7297835,5.2473326,5.9411426),vec4(5.0796127,8.979051,-1.7278991,-1.158976))*buf[6]+mat4(vec4(-11.967154,-11.608155,6.1486754,11.237008),vec4(2.124141,-6.263192,-1.7050359,-0.7021966),vec4(0.,0.,0.,0.),vec4(0.,0.,0.,0.))*buf[7]+vec4(-4.17164,-3.2281182,-4.576417,-3.6401186);
+    buf[3]=mat4(vec4(3.1832156,-13.738922,1.879223,3.233465),vec4(0.64300746,12.768129,1.9141049,0.50990224),vec4(-0.049295485,4.4807224,1.4733979,1.801449),vec4(5.0039253,13.000481,3.3991797,-4.5561905))*buf[6]+mat4(vec4(-0.1285731,7.720628,-3.1425676,4.742367),vec4(0.6393625,3.714393,-0.8108378,-0.39174938),vec4(0.,0.,0.,0.),vec4(0.,0.,0.,0.))*buf[7]+vec4(-1.1811101,-21.621881,0.7851888,1.2329718);
+    buf[2]=sigmoid(buf[2]);buf[3]=sigmoid(buf[3]);
+    buf[4]=mat4(vec4(5.214916,-7.183024,2.7228765,2.6592617),vec4(-5.601878,-25.3591,4.067988,0.4602802),vec4(-10.57759,24.286327,21.102104,37.546658),vec4(4.3024497,-1.9625226,2.3458803,-1.372816))*buf[0]+mat4(vec4(-17.6526,-10.507558,2.2587414,12.462782),vec4(6.265566,-502.75443,-12.642513,0.9112289),vec4(-10.983244,20.741234,-9.701768,-0.7635988),vec4(5.383626,1.4819539,-4.1911616,-4.8444734))*buf[1]+mat4(vec4(12.785233,-16.345072,-0.39901125,1.7955981),vec4(-30.48365,-1.8345358,1.4542528,-1.1118771),vec4(19.872723,-7.337935,-42.941723,-98.52709),vec4(8.337645,-2.7312303,-2.2927687,-36.142323))*buf[2]+mat4(vec4(-16.298317,3.5471997,-0.44300047,-9.444417),vec4(57.5077,-35.609753,16.163465,-4.1534753),vec4(-0.07470326,-3.8656476,-7.0901804,3.1523974),vec4(-12.559385,-7.077619,1.490437,-0.8211543))*buf[3]+vec4(-7.67914,15.927437,1.3207729,-1.6686112);
+    buf[5]=mat4(vec4(-1.4109162,-0.372762,-3.770383,-21.367174),vec4(-6.2103205,-9.35908,0.92529047,8.82561),vec4(11.460242,-22.348068,13.625772,-18.693201),vec4(-0.3429052,-3.9905605,-2.4626114,-0.45033523))*buf[0]+mat4(vec4(7.3481627,-4.3661838,-6.3037653,-3.868115),vec4(1.5462853,6.5488915,1.9701879,-0.58291394),vec4(6.5858274,-2.2180402,3.7127688,-1.3730392),vec4(-5.7973905,10.134961,-2.3395722,-5.965605))*buf[1]+mat4(vec4(-2.5132585,-6.6685553,-1.4029363,-0.16285264),vec4(-0.37908727,0.53738135,4.389061,-1.3024765),vec4(-0.70647055,2.0111287,-5.1659346,-3.728635),vec4(-13.562562,10.487719,-0.9173751,-2.6487076))*buf[2]+mat4(vec4(-8.645013,6.5546675,-6.3944063,-5.5933375),vec4(-0.57783127,-1.077275,36.91025,5.736769),vec4(14.283112,3.7146652,7.1452246,-4.5958776),vec4(2.7192075,3.6021907,-4.366337,-2.3653464))*buf[3]+vec4(-5.9000807,-4.329569,1.2427121,8.59503);
+    buf[4]=sigmoid(buf[4]);buf[5]=sigmoid(buf[5]);
+    buf[6]=mat4(vec4(-1.61102,0.7970257,1.4675229,0.20917463),vec4(-28.793737,-7.1390953,1.5025433,4.656581),vec4(-10.94861,39.66238,0.74318546,-10.095605),vec4(-0.7229728,-1.5483948,0.7301322,2.1687684))*buf[0]+mat4(vec4(3.2547753,21.489103,-1.0194173,-3.3100595),vec4(-3.7316632,-3.3792162,-7.223193,-0.23685838),vec4(13.1804495,0.7916005,5.338587,5.687114),vec4(-4.167605,-17.798311,-6.815736,-1.6451967))*buf[1]+mat4(vec4(0.604885,-7.800309,-7.213122,-2.741014),vec4(-3.522382,-0.12359311,-0.5258442,0.43852118),vec4(9.6752825,-22.853785,2.062431,0.099892326),vec4(-4.3196306,-17.730087,2.5184598,5.30267))*buf[2]+mat4(vec4(-6.545563,-15.790176,-6.0438633,-5.415399),vec4(-43.591583,28.551912,-16.00161,18.84728),vec4(4.212382,8.394307,3.0958717,8.657522),vec4(-5.0237565,-4.450633,-4.4768,-5.5010443))*buf[3]+mat4(vec4(1.6985557,-67.05806,6.897715,1.9004834),vec4(1.8680354,2.3915145,2.5231109,4.081538),vec4(11.158006,1.7294737,2.0738268,7.386411),vec4(-4.256034,-306.24686,8.258898,-17.132736))*buf[4]+mat4(vec4(1.6889864,-4.5852966,3.8534803,-6.3482175),vec4(1.3543309,-1.2640043,9.932754,2.9079645),vec4(-5.2770967,0.07150358,-0.13962056,3.3269649),vec4(28.34703,-4.918278,6.1044083,4.085355))*buf[5]+vec4(6.6818056,12.522166,-3.7075126,-4.104386);
+    buf[7]=mat4(vec4(-8.265602,-4.7027016,5.098234,0.7509808),vec4(8.6507845,-17.15949,16.51939,-8.884479),vec4(-4.036479,-2.3946867,-2.6055532,-1.9866527),vec4(-2.2167742,-1.8135649,-5.9759874,4.8846445))*buf[0]+mat4(vec4(6.7790847,3.5076547,-2.8191125,-2.7028968),vec4(-5.743024,-0.27844876,1.4958696,-5.0517144),vec4(13.122226,15.735168,-2.9397483,-4.101023),vec4(-14.375265,-5.030483,-6.2599335,2.9848232))*buf[1]+mat4(vec4(4.0950394,-0.94011575,-5.674733,4.755022),vec4(4.3809423,4.8310084,1.7425908,-3.437416),vec4(2.117492,0.16342592,-104.56341,16.949184),vec4(-5.22543,-2.994248,3.8350096,-1.9364246))*buf[2]+mat4(vec4(-5.900337,1.7946124,-13.604192,-3.8060522),vec4(6.6583457,31.911177,25.164474,91.81147),vec4(11.840538,4.1503043,-0.7314397,6.768467),vec4(-6.3967767,4.034772,6.1714606,-0.32874924))*buf[3]+mat4(vec4(3.4992442,-196.91893,-8.923708,2.8142626),vec4(3.4806502,-3.1846354,5.1725626,5.1804223),vec4(-2.4009497,15.585794,1.2863957,2.0252278),vec4(-71.25271,-62.441242,-8.138444,0.50670296))*buf[4]+mat4(vec4(-12.291733,-11.176166,-7.3474145,4.390294),vec4(10.805477,5.6337385,-0.9385842,-4.7348723),vec4(-12.869276,-7.039391,5.3029537,7.5436664),vec4(1.4593618,8.91898,3.5101583,5.840625))*buf[5]+vec4(2.2415268,-6.705987,-0.98861027,-2.117676);
+    buf[6]=sigmoid(buf[6]);buf[7]=sigmoid(buf[7]);
+    buf[0]=mat4(vec4(1.6794263,1.3817469,2.9625452,0.),vec4(-1.8834411,-1.4806935,-3.5924516,0.),vec4(-1.3279216,-1.0918057,-2.3124623,0.),vec4(0.2662234,0.23235129,0.44178495,0.))*buf[0]+mat4(vec4(-0.6299101,-0.5945583,-0.9125601,0.),vec4(0.17828953,0.18300213,0.18182953,0.),vec4(-2.96544,-2.5819945,-4.9001055,0.),vec4(1.4195864,1.1868085,2.5176322,0.))*buf[1]+mat4(vec4(-1.2584374,-1.0552157,-2.1688404,0.),vec4(-0.7200217,-0.52666044,-1.438251,0.),vec4(0.15345335,0.15196142,0.272854,0.),vec4(0.945728,0.8861938,1.2766753,0.))*buf[2]+mat4(vec4(-2.4218085,-1.968602,-4.35166,0.),vec4(-22.683098,-18.0544,-41.954372,0.),vec4(0.63792,0.5470648,1.1078634,0.),vec4(-1.5489894,-1.3075932,-2.6444845,0.))*buf[3]+mat4(vec4(-0.49252132,-0.39877754,-0.91366625,0.),vec4(0.95609266,0.7923952,1.640221,0.),vec4(0.30616966,0.15693925,0.8639857,0.),vec4(1.1825981,0.94504964,2.176963,0.))*buf[4]+mat4(vec4(0.35446745,0.3293795,0.59547555,0.),vec4(-0.58784515,-0.48177817,-1.0614829,0.),vec4(2.5271258,1.9991658,4.6846647,0.),vec4(0.13042648,0.08864098,0.30187556,0.))*buf[5]+mat4(vec4(-1.7718065,-1.4033192,-3.3355875,0.),vec4(3.1664357,2.638297,5.378702,0.),vec4(-3.1724713,-2.6107926,-5.549295,0.),vec4(-2.851368,-2.249092,-5.3013067,0.))*buf[6]+mat4(vec4(1.5203838,1.2212278,2.8404984,0.),vec4(1.5210563,1.2651345,2.683903,0.),vec4(2.9789467,2.4364579,5.2347264,0.),vec4(2.2270417,1.8825914,3.8028636,0.))*buf[7]+vec4(-1.5468478,-3.6171484,0.24762098,0.);
+    buf[0]=sigmoid(buf[0]);
+    return vec4(buf[0].x,buf[0].y,buf[0].z,1.);
+}
+
+void mainImage(out vec4 fragColor,in vec2 fragCoord){
+    vec2 uv=fragCoord/uResolution.xy*2.-1.;
+    uv.x*=uResolution.x/uResolution.y;
+    uv.y*=-1.;
+    uv+=uWarp*vec2(sin(uv.y*6.283+uTime*0.5),cos(uv.x*6.283+uTime*0.5))*0.05;
+    fragColor=cppn_fn(uv,0.1*sin(0.3*uTime),0.1*sin(0.69*uTime),0.1*sin(0.44*uTime));
+}
+
+void main(){
+    vec4 col;mainImage(col,gl_FragCoord.xy);
+    col.rgb=hueShiftRGB(col.rgb,uHueShift);
+    float scanline_val=sin(gl_FragCoord.y*uScanFreq)*0.5+0.5;
+    col.rgb*=1.-(scanline_val*scanline_val)*uScan;
+    col.rgb+=(rand(gl_FragCoord.xy+uTime)-0.5)*uNoise;
+    gl_FragColor=vec4(clamp(col.rgb,0.0,1.0),1.0);
+}
+`;
+
+type Props = {
+  hueShift?: number;
+  noiseIntensity?: number;
+  scanlineIntensity?: number;
+  speed?: number;
+  scanlineFrequency?: number;
+  warpAmount?: number;
+  resolutionScale?: number;
+};
+
+export default function DarkVeil({
+                                   hueShift = 0,
+                                   noiseIntensity = 0,
+                                   scanlineIntensity = 0,
+                                   speed = 0.5,
+                                   scanlineFrequency = 0,
+                                   warpAmount = 0,
+                                   resolutionScale = 1
+                                 }: Props) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current as HTMLCanvasElement;
+    const parent = canvas.parentElement as HTMLElement;
+
+    const renderer = new Renderer({
+      dpr: Math.min(window.devicePixelRatio, 2),
+      canvas
+    });
+
+    const gl = renderer.gl;
+    const geometry = new Triangle(gl);
+
+    const program = new Program(gl, {
+      vertex,
+      fragment,
+      uniforms: {
+        uTime: { value: 0 },
+        uResolution: { value: new Vec2() },
+        uHueShift: { value: hueShift },
+        uNoise: { value: noiseIntensity },
+        uScan: { value: scanlineIntensity },
+        uScanFreq: { value: scanlineFrequency },
+        uWarp: { value: warpAmount }
+      }
+    });
+
+    const mesh = new Mesh(gl, { geometry, program });
+
+    const resize = () => {
+      const w = window.innerWidth,
+        h = window.innerHeight;
+      renderer.setSize(w * resolutionScale, h * resolutionScale);
+      program.uniforms.uResolution.value.set(w, h);
+    };
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    const start = performance.now();
+    let frame = 0;
+
+    const loop = () => {
+      program.uniforms.uTime.value = ((performance.now() - start) / 1000) * speed;
+      program.uniforms.uHueShift.value = hueShift;
+      program.uniforms.uNoise.value = noiseIntensity;
+      program.uniforms.uScan.value = scanlineIntensity;
+      program.uniforms.uScanFreq.value = scanlineFrequency;
+      program.uniforms.uWarp.value = warpAmount;
+      renderer.render({ scene: mesh });
+      frame = requestAnimationFrame(loop);
+    };
+
+    loop();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', resize);
+    };
+  }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale]);
+  return <canvas ref={ref} className="darkveil-canvas" />;
+}
+</file>
+
+<file path="frontend/src/components/Navbar.tsx">
+import { type FC } from "react";
+import { useNavigate } from "react-router-dom";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { Vote } from "lucide-react";
+
+export const Navbar: FC = () => {
+  const navigate = useNavigate();
+  return (
+    <nav className="w-full border-b border-black/5 bg-white/70 backdrop-blur sticky top-0 z-20">
+      <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 font-semibold text-brand-900 text-lg"
+        >
+          <span className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-brand-400 flex items-center justify-center text-white">
+            <Vote size={18} />
+          </span>
+          Vota
+        </button>
+        <WalletMultiButton />
+      </div>
+    </nav>
+  );
+};
+</file>
+
+<file path="frontend/src/components/ProposalCard.tsx">
+import { type FC, useCallback, useEffect, useState } from "react";
+import { PublicKey } from "@solana/web3.js";
+import { CheckCircle2, Loader2, Flag, XCircle } from "lucide-react";
+import { useProgram } from "../anchor/useProgram";
+import {
+  type OnChainProposal,
+  castVoteOnChain,
+  closeProposalOnChain,
+  fetchProposal,
+  finalizeProposalOnChain,
+  friendlyTxError,
+} from "../services/votingService";
+
+interface Props {
+  proposalAddress: string;
+  wallet: string;
+  hasVotedGlobally: boolean;
+  onVoted: () => void;
+  onClosed: (proposalAddress: string) => void;
+}
+
+export const ProposalCard: FC<Props> = ({
+  proposalAddress,
+  wallet,
+  hasVotedGlobally,
+  onVoted,
+  onClosed,
+}) => {
+  const program = useProgram();
+  const [proposal, setProposal] = useState<OnChainProposal | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!program) return;
+    try {
+      const data = await fetchProposal(program, proposalAddress);
+      setProposal(data);
+    } catch {
+      setError("Couldn't load this proposal on-chain — it may have been closed.");
+    } finally {
+      setLoading(false);
+    }
+  }, [program, proposalAddress]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (loading) {
+    return (
+      <div className="bg-white border border-black/5 rounded-2xl p-5 shadow-soft flex items-center gap-2 text-slate-400 text-sm">
+        <Loader2 size={16} className="animate-spin" /> Loading proposal...
+      </div>
+    );
+  }
+
+  if (!proposal) {
+    return (
+      <div className="bg-white border border-black/5 rounded-2xl p-5 shadow-soft text-sm text-slate-400">
+        {error ?? "Proposal unavailable."}
+      </div>
+    );
+  }
+
+  const totalVotes = proposal.voteCounts.reduce((a, b) => a + b, 0);
+  const isCreator = proposal.creator === wallet;
+  const votingClosed = Date.now() / 1000 >= proposal.endTime;
+
+  const handleVote = async (optionIndex: number) => {
+    if (!program || hasVotedGlobally || proposal.finalized) return;
+    setPendingAction(`vote-${optionIndex}`);
+    setError(null);
+    try {
+      await castVoteOnChain(program, new PublicKey(wallet), proposalAddress, optionIndex);
+      await load();
+      onVoted();
+    } catch (err) {
+      setError(friendlyTxError(err));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleFinalize = async () => {
+    if (!program) return;
+    setPendingAction("finalize");
+    setError(null);
+    try {
+      await finalizeProposalOnChain(program, new PublicKey(wallet), proposalAddress);
+      await load();
+    } catch (err) {
+      setError(friendlyTxError(err));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleClose = async () => {
+    if (!program) return;
+    setPendingAction("close");
+    setError(null);
+    try {
+      await closeProposalOnChain(program, new PublicKey(wallet), proposalAddress);
+      onClosed(proposalAddress);
+    } catch (err) {
+      setError(friendlyTxError(err));
+      setPendingAction(null);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-black/5 rounded-2xl p-5 shadow-soft">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-semibold text-brand-900">{proposal.title}</h3>
+          {proposal.description && (
+            <p className="text-sm text-slate-500 mt-1">{proposal.description}</p>
+          )}
+        </div>
+        {proposal.finalized && (
+          <span className="shrink-0 flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+            <CheckCircle2 size={14} /> Finalized
+          </span>
+        )}
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {proposal.options.map((option, i) => {
+          const count = proposal.voteCounts[i] ?? 0;
+          const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+          const isWinner = proposal.finalized && proposal.winningOption === i;
+          return (
+            <button
+              key={i}
+              onClick={() => handleVote(i)}
+              disabled={hasVotedGlobally || proposal.finalized || pendingAction !== null}
+              className="w-full relative overflow-hidden rounded-xl border border-slate-200 disabled:cursor-default group"
+            >
+              <div
+                className={`absolute inset-y-0 left-0 transition-all ${
+                  isWinner ? "bg-emerald-50" : "bg-brand-50"
+                }`}
+                style={{ width: `${pct}%` }}
+              />
+              <div className="relative flex items-center justify-between px-4 py-2.5">
+                <span className="text-sm font-medium text-brand-900 flex items-center gap-1.5">
+                  {pendingAction === `vote-${i}` && <Loader2 size={14} className="animate-spin" />}
+                  {option}
+                  {isWinner && <Flag size={14} className="text-emerald-600" />}
+                </span>
+                <span className="text-xs text-slate-400">
+                  {count} vote{count !== 1 ? "s" : ""} · {pct}%
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
+
+      <div className="flex items-center justify-between mt-3">
+        <p className="text-xs text-slate-400">
+          {totalVotes} total vote{totalVotes !== 1 ? "s" : ""} ·{" "}
+          {votingClosed
+            ? "Voting closed"
+            : `Closes ${new Date(proposal.endTime * 1000).toLocaleString()}`}
+        </p>
+        <div className="flex gap-2">
+          {votingClosed && !proposal.finalized && (
+            <button
+              onClick={handleFinalize}
+              disabled={pendingAction !== null}
+              className="text-xs font-medium text-brand-600 hover:text-brand-500"
+            >
+              Finalize
+            </button>
+          )}
+          {isCreator && (
+            <button
+              onClick={handleClose}
+              disabled={pendingAction !== null}
+              className="text-xs font-medium text-slate-400 hover:text-red-500 flex items-center gap-1"
+            >
+              <XCircle size={14} /> Close
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+</file>
+
+<file path="frontend/src/context/WalletContextProvider.tsx">
+// Wraps the app with Solana's wallet-adapter context so any component
+// can call useWallet() / useConnection() to talk to Phantom.
+import { type FC, type ReactNode, useMemo } from "react";
+import {
+  ConnectionProvider,
+  WalletProvider,
+} from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
+import { clusterApiUrl } from "@solana/web3.js";
+
+interface Props {
+  children: ReactNode;
+}
+
+export const WalletContextProvider: FC<Props> = ({ children }) => {
+  // Switch to "mainnet-beta" when you deploy the real Anchor program
+  const endpoint = useMemo(() => clusterApiUrl("devnet"), []);
+  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>{children}</WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
+};
+</file>
+
+<file path="frontend/src/hooks/UseAuthWallet.ts">
+// Thin convenience hook: gives components the connected wallet's base58
+// address (or null), plus a guard for "must be signed in" routes.
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useMemo } from "react";
+
+export function useAuthWallet() {
+  const { publicKey, connected, connecting, disconnect } = useWallet();
+
+  const address = useMemo(() => publicKey?.toBase58() ?? null, [publicKey]);
+
+  return { address, connected, connecting, disconnect };
+}
+</file>
+
+<file path="frontend/src/hooks/useWalletAuth.ts">
+import { useCallback } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { signAuthPayload, type SignedAuthPayload } from "../utils/walletAuth";
+
+// sign("create_community") -> pops Phantom's signature prompt, resolves with
+// the {wallet, message, signature} triple to send to the backend.
+export function useWalletAuth() {
+  const { publicKey, signMessage } = useWallet();
+
+  const sign = useCallback(
+    async (action: string): Promise<SignedAuthPayload> => {
+      if (!publicKey) throw new Error("Wallet not connected.");
+      if (!signMessage) throw new Error("This wallet doesn't support message signing.");
+      return signAuthPayload(publicKey, action, signMessage);
+    },
+    [publicKey, signMessage]
+  );
+
+  return { sign };
+}
+</file>
+
+<file path="frontend/src/services/votingService.ts">
+// Single choke point for every on-chain call the app makes. Mirrors the
+// exact instruction/account shapes in your Rust program — no invented
+// behavior beyond it.
+import { BN, Program } from "@coral-xyz/anchor";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { deriveProposalPda, deriveVotePda } from "../anchor/pda";
+
+export interface OnChainProposal {
+  address: string;
+  creator: string;
+  id: string;
+  title: string;
+  description: string;
+  options: string[];
+  voteCounts: number[];
+  endTime: number; // unix seconds
+  finalized: boolean;
+  winningOption: number | null;
+}
+
+function mapProposal(address: PublicKey, acc: any): OnChainProposal {
+  return {
+    address: address.toBase58(),
+    creator: acc.creator.toBase58(),
+    id: acc.id.toString(),
+    title: acc.title,
+    description: acc.description,
+    options: acc.options,
+    voteCounts: acc.voteCounts.map((v: BN) => v.toNumber()),
+    endTime: acc.endTime.toNumber(),
+    finalized: acc.finalized,
+    winningOption: acc.winningOption ?? null,
+  };
+}
+
+export async function createProposalOnChain(
+  program: Program,
+  creator: PublicKey,
+  title: string,
+  description: string,
+  options: string[],
+  endTimeUnix: number
+): Promise<string> {
+  const [proposalPda] = deriveProposalPda(creator);
+  const id = new BN(Date.now());
+
+  await program.methods
+    .createProposal(title, description, options, id, new BN(endTimeUnix))
+    .accounts({
+      proposal: proposalPda,
+      creator,
+      systemProgram: SystemProgram.programId,
+    } as any)
+    .rpc();
+
+  return proposalPda.toBase58();
+}
+
+export async function fetchProposal(program: Program, address: string): Promise<OnChainProposal> {
+  const pubkey = new PublicKey(address);
+  const acc = await (program.account as any).proposal.fetch(pubkey);
+  return mapProposal(pubkey, acc);
+}
+
+export async function castVoteOnChain(
+  program: Program,
+  member: PublicKey,
+  proposalAddress: string,
+  option: number
+): Promise<void> {
+  const proposalPubkey = new PublicKey(proposalAddress);
+  const [votePda] = deriveVotePda(member);
+
+  await program.methods
+    .castVote(option)
+    .accounts({
+      vote: votePda,
+      proposal: proposalPubkey,
+      member,
+      systemProgram: SystemProgram.programId,
+    } as any)
+    .rpc();
+}
+
+// Reflects the contract's real (global, not per-proposal) vote limit.
+export async function hasWalletVoted(program: Program, member: PublicKey): Promise<boolean> {
+  const [votePda] = deriveVotePda(member);
+  const info = await program.provider.connection.getAccountInfo(votePda);
+  return info !== null;
+}
+
+export async function finalizeProposalOnChain(
+  program: Program,
+  signer: PublicKey,
+  proposalAddress: string
+): Promise<void> {
+  await program.methods
+    .finalizeProposal()
+    .accounts({ proposal: new PublicKey(proposalAddress), signer } as any)
+    .rpc();
+}
+
+export async function closeProposalOnChain(
+  program: Program,
+  creator: PublicKey,
+  proposalAddress: string
+): Promise<void> {
+  await program.methods
+    .closeProposal()
+    .accounts({ creator, proposal: new PublicKey(proposalAddress) } as any)
+    .rpc();
+}
+
+export function friendlyTxError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg.includes("already in use")) {
+    return "That account already exists on-chain — this wallet may already have an active proposal, or has already cast its vote.";
+  }
+  if (msg.includes("VotingStillOpen")) return "Voting is still open — you can't finalize this proposal yet.";
+  if (msg.includes("AlreadyFinalized")) return "This proposal has already been finalized.";
+  if (msg.includes("NoOptions")) return "This proposal has no options to finalize.";
+  if (msg.includes("Unauthorized")) return "You're not authorized to perform this action.";
+  return msg;
+}
+</file>
+
+<file path="frontend/src/utils/id.ts">
+export function generateId(prefix: string): string {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function shortenWallet(wallet: string): string {
+  return `${wallet.slice(0, 4)}...${wallet.slice(-4)}`;
+}
+</file>
+
+<file path="frontend/src/utils/walletAuth.ts">
+// Builds the message a wallet signs to prove ownership to the backend, and
+// packages it with the signature for the API layer to send along.
+import { PublicKey } from "@solana/web3.js";
+import bs58 from "bs58";
+
+export interface SignedAuthPayload {
+  wallet: string;
+  message: string;
+  signature: string; // base58-encoded
+}
+
+type SignMessageFn = (message: Uint8Array) => Promise<Uint8Array>;
+
+export async function signAuthPayload(
+  walletPubkey: PublicKey,
+  action: string,
+  signMessage: SignMessageFn
+): Promise<SignedAuthPayload> {
+  const nonceBytes = crypto.getRandomValues(new Uint8Array(16));
+  const nonce = Array.from(nonceBytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  const timestamp = new Date().toISOString();
+
+  // Keep this exact format in sync with whatever your backend parses/verifies.
+  const message = [
+    "Vota wants you to verify this wallet.",
+    "",
+    `Action: ${action}`,
+    `Wallet: ${walletPubkey.toBase58()}`,
+    `Timestamp: ${timestamp}`,
+    `Nonce: ${nonce}`,
+  ].join("\n");
+
+  const signatureBytes = await signMessage(new TextEncoder().encode(message));
+
+  return {
+    wallet: walletPubkey.toBase58(),
+    message,
+    signature: bs58.encode(signatureBytes),
+  };
+}
+</file>
+
+<file path="frontend/src/App.css">
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "@solana/wallet-adapter-react-ui/styles.css";
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+}
+
+/* Override the default wallet-adapter button so it matches our design language */
+/* .wallet-adapter-button {
+  background: linear-gradient(135deg, #5b3cff, #7c6cff) !important;
+  border-radius: 9999px !important;
+  height: 48px !important;
+  font-weight: 600 !important;
+} */
+</file>
+
+<file path="frontend/src/main.tsx">
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import { WalletContextProvider } from "./context/WalletContextProvider";
+import { AppDataProvider } from "./context/AppDataContext";
+import { Buffer } from "buffer";
+globalThis.Buffer= Buffer;
+import "./index.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <WalletContextProvider>
+        <AppDataProvider>
+          <App />
+        </AppDataProvider>
+      </WalletContextProvider>
+    </BrowserRouter>
+  </React.StrictMode>
+);
+</file>
+
+<file path="frontend/.env">
+VITE_API_BASE_URL=http://localhost:8000
+</file>
+
+<file path="frontend/.gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+</file>
+
+<file path="frontend/.oxlintrc.json">
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  }
+}
+</file>
+
+<file path="frontend/index.html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>frontend</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+</file>
+
+<file path="frontend/README.md">
+# React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the Oxlint configuration
+
+If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+
+```json
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  }
+}
+```
+
+See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+</file>
+
+<file path="frontend/tsconfig.app.json">
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "types": ["vite/client", "node"],
+    "allowArbitraryExtensions": true,
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}
+</file>
+
+<file path="frontend/tsconfig.json">
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
+</file>
+
+<file path="frontend/tsconfig.node.json">
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "module": "nodenext",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["vite.config.ts"]
+}
+</file>
+
+<file path="smart_contract/migrations/deploy.ts">
+// Migrations are an early feature. Currently, they're nothing more than this
+// single deploy script that's invoked from the CLI, injecting a provider
+// configured from the workspace's Anchor.toml.
+
+import * as anchor from "@anchor-lang/core";
+
+module.exports = async function (provider: anchor.AnchorProvider) {
+  // Configure client to use the provider.
+  anchor.setProvider(provider);
+
+  // Add your deploy script here.
+};
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/instructions/cast_vote.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+use crate::state::vote::Vote;
+
+#[derive(Accounts)]
+
+pub struct CastVote<'info> {
+    #[account(init, payer= member, 
+        seeds= [
+            b"vote",
+            member.key().as_ref(),
+        ],
+        bump,
+        space= 8
+        +32
+        +(4+50)
+    )]
+    pub vote: Account<'info,Vote>,
+
+    #[account(mut)]
+    pub proposal: Account<'info,Proposal>,
+    #[account(mut)]
+    pub member: Signer<'info>,
+    pub system_program: Program<'info,System>,
+
+}
+
+pub fn cast_vote(ctx: Context<CastVote>, option: u8) -> Result<()> {
+    let vote= &mut ctx.accounts.vote;
+    let proposal= &mut ctx.accounts.proposal;
+    vote.member= ctx.accounts.member.key();
+    vote.option= option;
+    proposal.vote_counts[option as usize]+=1;
+    msg!("Your vote has been casted, THANKYOU");
+    Ok(())
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/instructions/close_proposal.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+
+#[derive(Accounts)]
+
+pub struct CloseProposal<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+
+    #[account(mut,
+        seeds= [
+            b"proposal",
+            creator.key().as_ref(),
+        ],
+        bump,
+        close= creator,
+    )]
+    pub proposal: Account<'info,Proposal>
+}
+
+
+pub fn close_proposal(ctx: Context<CloseProposal>) -> Result<()> {
+
+    msg!("This proposal has been closed");
+    Ok(())
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/instructions/create_proposal.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+
+#[derive(Accounts)]
+
+pub struct CreateProposal<'info> {
+    #[account(init, payer = creator, seeds = [
+        b"proposal",
+        creator.key().as_ref(),
+        ],
+        bump,
+        space= 8 //discriminator
+        +32 // creator
+        +8 //id
+        +(4+100) //title
+        +(4+500) //description
+        +(4+5*(4+50)) //options
+        +(4+(5*8)) //count votes
+        +8 //end time
+        +1 //finalized
+        +(4+50) //winning option
+    )] 
+
+    pub proposal: Account<'info, Proposal>,
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    pub system_program: Program<'info,System>
+}
+
+
+pub fn create_proposal(ctx: Context<CreateProposal>, title: String, description: String, options: Vec<String>, id: u64,end_time: i64)
+-> Result<()> {
+    let proposal= &mut ctx.accounts.proposal;
+    proposal.title= title;
+    proposal.description= description;
+    proposal.creator= ctx.accounts.creator.key();
+    proposal.vote_counts = vec![0; options.len()];
+    proposal.options= options;
+    proposal.id= id;
+    proposal.end_time= end_time;
+    msg!("Proposal created successfully");
+    Ok(())
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/instructions/finalize_proposal.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+use crate::errors::DaoError;
+
+#[derive(Accounts)]
+
+pub struct FinalizeProposal<'info> {
+
+    #[account(mut)]
+    pub proposal: Account<'info,Proposal>,
+    pub signer: Signer<'info>,
+    
+}
+
+pub fn finalize_proposal(ctx: Context<FinalizeProposal>) -> Result<()> {
+    let proposal= &mut ctx.accounts.proposal;
+
+    let current_time= Clock::get()?.unix_timestamp;
+
+    msg!("Current time: {}", current_time);
+    msg!("Proposal end_time: {}", proposal.end_time);
+
+    require!(
+        current_time>=proposal.end_time,
+        DaoError::VotingStillOpen
+    );
+
+    require!(
+        !proposal.finalized,
+        DaoError::AlreadyFinalized
+    );
+
+    require!(
+        !proposal.vote_counts.is_empty(),
+        DaoError::NoOptions
+    );
+
+    let mut winner= 0;
+    let mut max_votes= proposal.vote_counts[0];
+
+    for i in 1..proposal.vote_counts.len() {
+        if proposal.vote_counts[i]>max_votes{
+            max_votes= proposal.vote_counts[i];
+            winner= i;
+        }
+    }
+
+    proposal.winning_option= Some(winner as u16);
+    proposal.finalized= true;
+
+
+    msg!("This proposal has been finalized");
+
+    Ok(())
+    
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/instructions/initialize.rs">
+use anchor_lang::prelude::*;
+
+#[derive(Accounts)]
+pub struct Initialize {}
+
+pub fn handler(ctx: Context<Initialize>) -> Result<()> {
+    msg!("Greetings from: {:?}", ctx.program_id);
+    Ok(())
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/instructions/mod.rs">
+pub mod initialize;
+pub mod create_proposal;
+pub mod cast_vote;
+pub mod finalize_proposal;
+pub mod close_proposal;
+
+pub use initialize::*;
+pub use create_proposal::*;
+pub use cast_vote::*;
+pub use finalize_proposal::*;
+pub use close_proposal::*;
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/state/mod.rs">
+pub mod proposal;
+pub mod vote;
+
+pub use proposal::*;
+pub use vote::*;
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/state/proposal.rs">
+use anchor_lang::prelude::*;
+
+#[account]
+pub struct Proposal {
+    pub creator: Pubkey,
+    pub id: u64,
+    pub title: String,
+    pub description: String,
+    pub options: Vec<String>,
+    pub vote_counts: Vec<u64>,
+    pub end_time: i64,
+    pub finalized: bool,
+    pub winning_option: Option<u16>,
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/state/vote.rs">
+use anchor_lang::prelude::*;
+
+#[account]
+pub struct Vote {
+    pub member: Pubkey,
+    pub option: u8,
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/constants.rs">
+use anchor_lang::prelude::*;
+
+#[constant]
+pub const SEED: &str = "anchor";
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/errors.rs">
+use anchor_lang::prelude::*;
+
+#[error_code]
+pub enum DaoError {
+    #[msg("You are not allowed to close the proposal")]
+    Unauthorized,
+
+    #[msg("The voting is still open")]
+    VotingStillOpen,
+
+    #[msg("The proposal has already finalized")]
+    AlreadyFinalized,
+
+    #[msg("There are no options to this proposal")]
+    NoOptions,
+
+    
+
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/src/lib.rs">
+pub mod constants;
+pub mod errors;
+pub mod instructions;
+pub mod state;
+
+use anchor_lang::prelude::*;
+
+pub use constants::*;
+pub use instructions::*;
+pub use state::*;
+
+declare_id!("6HF7SL2ydXxthwKgFmw5ELh9QzkgrTav7AWEuKcCqh5S");
+
+#[program]
+pub mod smart_contract {
+    use super::*;
+
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        initialize::handler(ctx)
+    }
+
+    pub fn create_proposal(ctx: Context<CreateProposal>, title: String, description: String, options: Vec<String>, id: u64, end_time: i64) -> Result<()> {
+        create_proposal::create_proposal(ctx,title,description,options,id,end_time)
+    }
+
+    pub fn cast_vote(ctx: Context<CastVote>, option: u8) -> Result<()> {
+        cast_vote::cast_vote(ctx,option)
+    }
+
+    pub fn finalize_proposal(ctx: Context<FinalizeProposal>) -> Result<()> {
+        finalize_proposal::finalize_proposal(ctx)
+    }
+
+    pub fn close_proposal(ctx: Context<CloseProposal>) -> Result<()> {
+        close_proposal::close_proposal(ctx)
+    }
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/tests/test_cast_vote.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+
+#[test]
+
+fn test_cast_vote() {
+    let program_id= smart_contract::id();
+    let member= Keypair::new();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    let (vote_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"vote",
+            member.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&member.pubkey(), 1_000_000_000).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+    let create_proposal= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 3 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[create_proposal], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+    let p_res= svm.send_transaction(tx);
+    assert!(p_res.is_ok());
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CastVote{option: 2}.data(),
+        smart_contract::accounts::CastVote{member: member.pubkey(),
+                                                    proposal: proposal_pda,
+                                                    vote: vote_pda,
+                                                    system_program: system_program::ID}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&member.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[member]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/tests/test_close_proposal.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+#[test]
+
+fn test_close_proposal() {
+    let program_id= smart_contract::id();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+
+
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 3 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[&creator]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    assert!(res.is_ok());
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CloseProposal{}.data(),
+        smart_contract::accounts::CloseProposal{creator: creator.pubkey(),
+                                                            proposal: proposal_pda}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/tests/test_create_proposal.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+#[test]
+
+fn test_create_proposal() {
+    let program_id= smart_contract::id();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes= include_bytes!("../../../target/deploy/smart_contract.so");
+
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 3 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/tests/test_finalize_proposal.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+
+#[test]
+
+fn test_finalize_proposal(){
+    let program_id= smart_contract::id();
+    let payer= Keypair::new();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+    let create_proposal= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 0 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[create_proposal], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+    let p_res= svm.send_transaction(tx);
+    assert!(p_res.is_ok());
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::FinalizeProposal{}.data(),
+        smart_contract::accounts::FinalizeProposal{signer: payer.pubkey(),
+                                                            proposal: proposal_pda, }.to_account_metas(None)
+
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash( &[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg),&[payer]).unwrap();
+    let res= svm.send_transaction(tx);
+
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/tests/test_initialize.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+#[test]
+fn test_initialize() {
+    let program_id = smart_contract::id();
+    let payer = Keypair::new();
+    let mut svm = LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::Initialize {}.data(),
+        smart_contract::accounts::Initialize {}.to_account_metas(None),
+    );
+
+    let blockhash = svm.latest_blockhash();
+    let msg = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer]).unwrap();
+
+    let res = svm.send_transaction(tx);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="smart_contract/programs/smart_contract/Cargo.toml">
+[package]
+name = "smart_contract"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "smart_contract"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+
+[dependencies]
+anchor-lang = "1.0.1"
+solana-pubkey = "4.2.0"
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-message = "3.0.1"
+solana-transaction = "3.0.2"
+solana-signer = "3.0.0"
+solana-keypair = "3.0.1"
+
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+</file>
+
+<file path="smart_contract/.gitignore">
+.anchor
+.DS_Store
+target
+**/*.rs.bk
+node_modules
+test-ledger
+.yarn
+.surfpool
+</file>
+
+<file path="smart_contract/.prettierignore">
+.anchor
+.DS_Store
+target
+node_modules
+dist
+build
+test-ledger
+</file>
+
+<file path="smart_contract/Anchor.toml">
+[toolchain]
+package_manager = "yarn"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+smart_contract = "6HF7SL2ydXxthwKgFmw5ELh9QzkgrTav7AWEuKcCqh5"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test"
+
+[hooks]
+</file>
+
+<file path="smart_contract/Cargo.toml">
+[workspace]
+members = [
+    "programs/*"
+]
+resolver = "2"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
+</file>
+
+<file path="smart_contract/package.json">
+{
+  "license": "ISC",
+  "scripts": {
+    "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
+    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
+  },
+  "dependencies": {
+    "@anchor-lang/core": "^1.0.1"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "mocha": "^9.0.3",
+    "ts-mocha": "^10.0.0",
+    "@types/bn.js": "^5.1.0",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^9.0.0",
+    "typescript": "^5.7.3",
+    "prettier": "^2.6.2"
+  }
+}
+</file>
+
+<file path="smart_contract/repomix-output.xml">
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+migrations/
+  deploy.ts
+programs/
+  smart_contract/
+    src/
+      instructions/
+        cast_vote.rs
+        close_proposal.rs
+        create_proposal.rs
+        finalize_proposal.rs
+        initialize.rs
+        mod.rs
+      state/
+        mod.rs
+        proposal.rs
+        vote.rs
+      constants.rs
+      errors.rs
+      lib.rs
+    tests/
+      test_cast_vote.rs
+      test_close_proposal.rs
+      test_create_proposal.rs
+      test_finalize_proposal.rs
+      test_initialize.rs
+    Cargo.toml
+.gitignore
+.prettierignore
+Anchor.toml
+Cargo.toml
+package.json
+rust-toolchain.toml
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="migrations/deploy.ts">
+// Migrations are an early feature. Currently, they're nothing more than this
+// single deploy script that's invoked from the CLI, injecting a provider
+// configured from the workspace's Anchor.toml.
+
+import * as anchor from "@anchor-lang/core";
+
+module.exports = async function (provider: anchor.AnchorProvider) {
+  // Configure client to use the provider.
+  anchor.setProvider(provider);
+
+  // Add your deploy script here.
+};
+</file>
+
+<file path="programs/smart_contract/src/instructions/cast_vote.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+use crate::state::vote::Vote;
+
+#[derive(Accounts)]
+
+pub struct CastVote<'info> {
+    #[account(init, payer= member, 
+        seeds= [
+            b"vote",
+            member.key().as_ref(),
+        ],
+        bump,
+        space= 8
+        +32
+        +(4+50)
+    )]
+    pub vote: Account<'info,Vote>,
+
+    #[account(mut)]
+    pub proposal: Account<'info,Proposal>,
+    #[account(mut)]
+    pub member: Signer<'info>,
+    pub system_program: Program<'info,System>,
+
+}
+
+pub fn cast_vote(ctx: Context<CastVote>, option: u8) -> Result<()> {
+    let vote= &mut ctx.accounts.vote;
+    let proposal= &mut ctx.accounts.proposal;
+    vote.member= ctx.accounts.member.key();
+    vote.option= option;
+    proposal.vote_counts[option as usize]+=1;
+    msg!("Your vote has been casted, THANKYOU");
+    Ok(())
+}
+</file>
+
+<file path="programs/smart_contract/src/instructions/close_proposal.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+
+#[derive(Accounts)]
+
+pub struct CloseProposal<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+
+    #[account(mut,
+        seeds= [
+            b"proposal",
+            creator.key().as_ref(),
+        ],
+        bump,
+        close= creator,
+    )]
+    pub proposal: Account<'info,Proposal>
+}
+
+
+pub fn close_proposal(ctx: Context<CloseProposal>) -> Result<()> {
+
+    msg!("This proposal has been closed");
+    Ok(())
+}
+</file>
+
+<file path="programs/smart_contract/src/instructions/create_proposal.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+
+#[derive(Accounts)]
+
+pub struct CreateProposal<'info> {
+    #[account(init, payer = creator, seeds = [
+        b"proposal",
+        creator.key().as_ref(),
+        ],
+        bump,
+        space= 8 //discriminator
+        +32 // creator
+        +8 //id
+        +(4+100) //title
+        +(4+500) //description
+        +(4+5*(4+50)) //options
+        +(4+(5*8)) //count votes
+        +8 //end time
+        +1 //finalized
+        +(4+50) //winning option
+    )] 
+
+    pub proposal: Account<'info, Proposal>,
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    pub system_program: Program<'info,System>
+}
+
+
+pub fn create_proposal(ctx: Context<CreateProposal>, title: String, description: String, options: Vec<String>, id: u64,end_time: i64)
+-> Result<()> {
+    let proposal= &mut ctx.accounts.proposal;
+    proposal.title= title;
+    proposal.description= description;
+    proposal.creator= ctx.accounts.creator.key();
+    proposal.vote_counts = vec![0; options.len()];
+    proposal.options= options;
+    proposal.id= id;
+    proposal.end_time= end_time;
+    msg!("Proposal created successfully");
+    Ok(())
+}
+</file>
+
+<file path="programs/smart_contract/src/instructions/finalize_proposal.rs">
+use anchor_lang::prelude::*;
+use crate::state::proposal::Proposal;
+use crate::errors::DaoError;
+
+#[derive(Accounts)]
+
+pub struct FinalizeProposal<'info> {
+
+    #[account(mut)]
+    pub proposal: Account<'info,Proposal>,
+    pub signer: Signer<'info>,
+    
+}
+
+pub fn finalize_proposal(ctx: Context<FinalizeProposal>) -> Result<()> {
+    let proposal= &mut ctx.accounts.proposal;
+
+    let current_time= Clock::get()?.unix_timestamp;
+
+    msg!("Current time: {}", current_time);
+    msg!("Proposal end_time: {}", proposal.end_time);
+
+    require!(
+        current_time>=proposal.end_time,
+        DaoError::VotingStillOpen
+    );
+
+    require!(
+        !proposal.finalized,
+        DaoError::AlreadyFinalized
+    );
+
+    require!(
+        !proposal.vote_counts.is_empty(),
+        DaoError::NoOptions
+    );
+
+    let mut winner= 0;
+    let mut max_votes= proposal.vote_counts[0];
+
+    for i in 1..proposal.vote_counts.len() {
+        if proposal.vote_counts[i]>max_votes{
+            max_votes= proposal.vote_counts[i];
+            winner= i;
+        }
+    }
+
+    proposal.winning_option= Some(winner as u16);
+    proposal.finalized= true;
+
+
+    msg!("This proposal has been finalized");
+
+    Ok(())
+    
+}
+</file>
+
+<file path="programs/smart_contract/src/instructions/initialize.rs">
+use anchor_lang::prelude::*;
+
+#[derive(Accounts)]
+pub struct Initialize {}
+
+pub fn handler(ctx: Context<Initialize>) -> Result<()> {
+    msg!("Greetings from: {:?}", ctx.program_id);
+    Ok(())
+}
+</file>
+
+<file path="programs/smart_contract/src/instructions/mod.rs">
+pub mod initialize;
+pub mod create_proposal;
+pub mod cast_vote;
+pub mod finalize_proposal;
+pub mod close_proposal;
+
+pub use initialize::*;
+pub use create_proposal::*;
+pub use cast_vote::*;
+pub use finalize_proposal::*;
+pub use close_proposal::*;
+</file>
+
+<file path="programs/smart_contract/src/state/mod.rs">
+pub mod proposal;
+pub mod vote;
+
+pub use proposal::*;
+pub use vote::*;
+</file>
+
+<file path="programs/smart_contract/src/state/proposal.rs">
+use anchor_lang::prelude::*;
+
+#[account]
+pub struct Proposal {
+    pub creator: Pubkey,
+    pub id: u64,
+    pub title: String,
+    pub description: String,
+    pub options: Vec<String>,
+    pub vote_counts: Vec<u64>,
+    pub end_time: i64,
+    pub finalized: bool,
+    pub winning_option: Option<u16>,
+}
+</file>
+
+<file path="programs/smart_contract/src/state/vote.rs">
+use anchor_lang::prelude::*;
+
+#[account]
+pub struct Vote {
+    pub member: Pubkey,
+    pub option: u8,
+}
+</file>
+
+<file path="programs/smart_contract/src/constants.rs">
+use anchor_lang::prelude::*;
+
+#[constant]
+pub const SEED: &str = "anchor";
+</file>
+
+<file path="programs/smart_contract/src/errors.rs">
+use anchor_lang::prelude::*;
+
+#[error_code]
+pub enum DaoError {
+    #[msg("You are not allowed to close the proposal")]
+    Unauthorized,
+
+    #[msg("The voting is still open")]
+    VotingStillOpen,
+
+    #[msg("The proposal has already finalized")]
+    AlreadyFinalized,
+
+    #[msg("There are no options to this proposal")]
+    NoOptions,
+
+    
+
+}
+</file>
+
+<file path="programs/smart_contract/src/lib.rs">
+pub mod constants;
+pub mod errors;
+pub mod instructions;
+pub mod state;
+
+use anchor_lang::prelude::*;
+
+pub use constants::*;
+pub use instructions::*;
+pub use state::*;
+
+declare_id!("6HF7SL2ydXxthwKgFmw5ELh9QzkgrTav7AWEuKcCqh5S");
+
+#[program]
+pub mod smart_contract {
+    use super::*;
+
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        initialize::handler(ctx)
+    }
+
+    pub fn create_proposal(ctx: Context<CreateProposal>, title: String, description: String, options: Vec<String>, id: u64, end_time: i64) -> Result<()> {
+        create_proposal::create_proposal(ctx,title,description,options,id,end_time)
+    }
+
+    pub fn cast_vote(ctx: Context<CastVote>, option: u8) -> Result<()> {
+        cast_vote::cast_vote(ctx,option)
+    }
+
+    pub fn finalize_proposal(ctx: Context<FinalizeProposal>) -> Result<()> {
+        finalize_proposal::finalize_proposal(ctx)
+    }
+
+    pub fn close_proposal(ctx: Context<CloseProposal>) -> Result<()> {
+        close_proposal::close_proposal(ctx)
+    }
+}
+</file>
+
+<file path="programs/smart_contract/tests/test_cast_vote.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+
+#[test]
+
+fn test_cast_vote() {
+    let program_id= smart_contract::id();
+    let member= Keypair::new();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    let (vote_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"vote",
+            member.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&member.pubkey(), 1_000_000_000).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+    let create_proposal= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 3 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[create_proposal], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+    let p_res= svm.send_transaction(tx);
+    assert!(p_res.is_ok());
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CastVote{option: 2}.data(),
+        smart_contract::accounts::CastVote{member: member.pubkey(),
+                                                    proposal: proposal_pda,
+                                                    vote: vote_pda,
+                                                    system_program: system_program::ID}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&member.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[member]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="programs/smart_contract/tests/test_close_proposal.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+#[test]
+
+fn test_close_proposal() {
+    let program_id= smart_contract::id();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+
+
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 3 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[&creator]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    assert!(res.is_ok());
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CloseProposal{}.data(),
+        smart_contract::accounts::CloseProposal{creator: creator.pubkey(),
+                                                            proposal: proposal_pda}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="programs/smart_contract/tests/test_create_proposal.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+#[test]
+
+fn test_create_proposal() {
+    let program_id= smart_contract::id();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes= include_bytes!("../../../target/deploy/smart_contract.so");
+
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 3 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[instruction], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+
+    let res= svm.send_transaction(tx);
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="programs/smart_contract/tests/test_finalize_proposal.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+use anchor_lang::system_program;
+use solana_pubkey::Pubkey;
+
+
+#[test]
+
+fn test_finalize_proposal(){
+    let program_id= smart_contract::id();
+    let payer= Keypair::new();
+    let creator= Keypair::new();
+    let mut svm= LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    let (proposal_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"proposal",
+            creator.pubkey().as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();
+
+    let create_proposal= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::CreateProposal{title: "Test Proposal".to_string(), description: "Testing the program".to_string(), 
+        options: vec!["first".to_string(), "second".to_string(), "third".to_string()],
+        id: 1, end_time: 0 }.data(),
+        smart_contract::accounts::CreateProposal{creator: creator.pubkey(),
+                                                           proposal: proposal_pda,
+                                                           system_program: system_program::ID}.to_account_metas(None),
+    );
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash(&[create_proposal], Some(&creator.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[creator]).unwrap();
+    let p_res= svm.send_transaction(tx);
+    assert!(p_res.is_ok());
+
+    let instruction= Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::FinalizeProposal{}.data(),
+        smart_contract::accounts::FinalizeProposal{signer: payer.pubkey(),
+                                                            proposal: proposal_pda, }.to_account_metas(None)
+
+    );
+
+    let blockhash= svm.latest_blockhash();
+    let msg= Message::new_with_blockhash( &[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx= VersionedTransaction::try_new(VersionedMessage::Legacy(msg),&[payer]).unwrap();
+    let res= svm.send_transaction(tx);
+
+    println!("{:#?}", res);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="programs/smart_contract/tests/test_initialize.rs">
+use {
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    litesvm::LiteSVM,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+#[test]
+fn test_initialize() {
+    let program_id = smart_contract::id();
+    let payer = Keypair::new();
+    let mut svm = LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &smart_contract::instruction::Initialize {}.data(),
+        smart_contract::accounts::Initialize {}.to_account_metas(None),
+    );
+
+    let blockhash = svm.latest_blockhash();
+    let msg = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer]).unwrap();
+
+    let res = svm.send_transaction(tx);
+    assert!(res.is_ok());
+}
+</file>
+
+<file path="programs/smart_contract/Cargo.toml">
+[package]
+name = "smart_contract"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "smart_contract"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+
+[dependencies]
+anchor-lang = "1.0.1"
+solana-pubkey = "4.2.0"
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-message = "3.0.1"
+solana-transaction = "3.0.2"
+solana-signer = "3.0.0"
+solana-keypair = "3.0.1"
+
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+</file>
+
+<file path=".gitignore">
+.anchor
+.DS_Store
+target
+**/*.rs.bk
+node_modules
+test-ledger
+.yarn
+.surfpool
+</file>
+
+<file path=".prettierignore">
+.anchor
+.DS_Store
+target
+node_modules
+dist
+build
+test-ledger
+</file>
+
+<file path="Anchor.toml">
+[toolchain]
+package_manager = "yarn"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+smart_contract = "B8aK6tZexrXB4Ji7Pk1qcHeSvCiEQa1hVGcKr2k7J43e"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test"
+
+[hooks]
+</file>
+
+<file path="Cargo.toml">
+[workspace]
+members = [
+    "programs/*"
+]
+resolver = "2"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
+</file>
+
+<file path="package.json">
+{
+  "license": "ISC",
+  "scripts": {
+    "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
+    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
+  },
+  "dependencies": {
+    "@anchor-lang/core": "^1.0.1"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "mocha": "^9.0.3",
+    "ts-mocha": "^10.0.0",
+    "@types/bn.js": "^5.1.0",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^9.0.0",
+    "typescript": "^5.7.3",
+    "prettier": "^2.6.2"
+  }
+}
+</file>
+
+<file path="rust-toolchain.toml">
+[toolchain]
+channel = "1.89.0"
+components = ["rustfmt","clippy"]
+profile = "minimal"
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "types": ["mocha", "chai"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2015"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true
+  }
+}
+</file>
+
+</files>
+</file>
+
+<file path="smart_contract/rust-toolchain.toml">
+[toolchain]
+channel = "1.89.0"
+components = ["rustfmt","clippy"]
+profile = "minimal"
+</file>
+
+<file path="smart_contract/tsconfig.json">
+{
+  "compilerOptions": {
+    "types": ["mocha", "chai"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2015"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true
+  }
+}
+</file>
+
+<file path="frontend/src/components/CommunityCard.tsx">
+import { type FC } from "react";
+import { type Community } from "../types";
+import { Users, ChevronRight } from "lucide-react";
+
+interface Props {
+  community: Community;
+  onClick: () => void;
+}
+
+export const CommunityCard: FC<Props> = ({ community, onClick }) => (
+  <button
+    onClick={onClick}
+    className="w-full text-left bg-white border border-black/5 rounded-2xl p-5 shadow-soft hover:-translate-y-0.5 hover:shadow-lg transition flex items-center justify-between"
+  >
+    <div>
+      <h3 className="font-semibold text-brand-900">{community.name}</h3>
+      {community.description && (
+        <p className="text-sm text-slate-500 mt-1 line-clamp-1">{community.description}</p>
+      )}
+      <div className="flex items-center gap-1.5 mt-3 text-xs text-slate-400">
+        <Users size={14} />
+        {community.members.length} member
+        {community.members.length !== 1 ? "s" : ""}
+      </div>
+    </div>
+    <ChevronRight className="text-slate-300" />
+  </button>
+);
+</file>
+
+<file path="frontend/src/components/CreateCommunityModal.tsx">
+import { type FC, useState } from "react";
+import { X, Copy, Check, Loader2 } from "lucide-react";
+import { useAppData } from "../context/AppDataContext";
+import { useWalletAuth } from "../hooks/useWalletAuth";
+import { buildInviteLink } from "../services/communityApi";
+
+interface Props {
+  onClose: () => void;
+}
+
+export const CreateCommunityModal: FC<Props> = ({ onClose }) => {
+  const { createCommunity } = useAppData();
+  const { sign } = useWalletAuth();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [createdInvite, setCreatedInvite] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleCreate = async () => {
+    if (!name.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const auth = await sign("create_community");
+      const community = await createCommunity(name.trim(), description.trim(), auth);
+      setCreatedInvite(buildInviteLink(community));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't create the community.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!createdInvite) return;
+    await navigator.clipboard.writeText(createdInvite);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-30 px-4">
+      <div className="bg-white rounded-2xl shadow-soft w-full max-w-md p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+          <X size={20} />
+        </button>
+
+        {!createdInvite ? (
+          <>
+            <h2 className="text-xl font-semibold text-slate-900">Create a community</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              You'll be asked to sign a message with Phantom to verify this wallet, then get a unique invite link.
+            </p>
+
+            <label className="block mt-6 text-sm font-medium text-slate-600">Community name</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Core Contributors DAO"
+              className="w-full mt-1.5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-200"
+            />
+
+            <label className="block mt-4 text-sm font-medium text-slate-600">Description (optional)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="What is this community about?"
+              className="w-full mt-1.5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-400 resize-none"
+            />
+
+            {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
+
+            <button
+              onClick={handleCreate}
+              disabled={!name.trim() || submitting}
+              className="mt-6 w-full flex items-center justify-center gap-2 bg-violet-600 text-white font-medium rounded-xl py-3 hover:bg-violet-700 transition disabled:bg-slate-200 disabled:text-slate-400"
+            >
+              {submitting && <Loader2 size={16} className="animate-spin" />}
+              {submitting ? "Waiting for signature..." : "Create community"}
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 className="text-xl font-semibold text-brand-900">Community created </h2>
+            <p className="text-sm text-slate-500 mt-1">Share this invite link so others can join.</p>
+            <div className="mt-5 flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-3 bg-slate-50">
+              <span className="text-sm text-slate-600 truncate flex-1">{createdInvite}</span>
+              <button onClick={handleCopy} className="text-violet-600 shrink-0">
+                {copied ? <Check size={18} /> : <Copy size={18} />}
+              </button>
+            </div>
+            <button
+              onClick={onClose}
+              className="mt-6 w-full bg-violet-900 text-white font-medium rounded-xl py-3 hover:bg-violet-600 transition"
+            >
+              Done
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+</file>
+
+<file path="frontend/src/components/JoinCommunityModal.tsx">
+import { type FC, useState } from "react";
+import { X, Loader2 } from "lucide-react";
+import { useAppData } from "../context/AppDataContext";
+import { useWalletAuth } from "../hooks/useWalletAuth";
+
+interface Props {
+  onClose: () => void;
+  onJoined: (invite_code: string) => void;
+}
+
+export const JoinCommunityModal: FC<Props> = ({ onClose, onJoined }) => {
+  const { joinCommunity } = useAppData();
+  const { sign } = useWalletAuth();
+  const [inviteInput, setInviteInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const extractCode = (input: string) => {
+    const trimmed = input.trim();
+    const parts = trimmed.split("/");
+    return parts[parts.length - 1];
+  };
+
+  const handleJoin = async () => {
+    const code = extractCode(inviteInput);
+    if (!code) {
+      setError("Paste an invite link or code first.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const auth = await sign("join_community");
+      const community = await joinCommunity(code, auth);
+      onJoined(community.invite_code);
+      console.log("community= ",community );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't join that community.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-30 px-4">
+      <div className="bg-white rounded-2xl shadow-soft w-full max-w-md p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+          <X size={20} />
+        </button>
+
+        <h2 className="text-xl font-semibold text-brand-900">Join a community</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          Paste the invite link or code someone shared with you. You'll sign a message with Phantom to confirm.
+        </p>
+
+        <input
+          value={inviteInput}
+          onChange={(e) => {
+            setInviteInput(e.target.value);
+            setError(null);
+          }}
+          placeholder="https://vota.app/join/ABCD1234"
+          className="w-full mt-5 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-400"
+        />
+        {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+
+        <button
+          onClick={handleJoin}
+          disabled={submitting}
+          className="mt-6 w-full flex items-center justify-center gap-2 bg-brand-600 disabled:bg-slate-200 text-white font-medium rounded-xl py-3 hover:bg-brand-500 transition"
+        >
+          {submitting && <Loader2 size={16} className="animate-spin" />}
+          {submitting ? "Waiting for signature..." : "Join community"}
+        </button>
+      </div>
+    </div>
+  );
+};
+</file>
+
+<file path="frontend/src/context/AppDataContext.tsx">
+import { createContext, type FC, type ReactNode, useCallback, useContext, useState } from "react";
+import { type Community } from "../types";
+import { type SignedAuthPayload } from "../utils/walletAuth";
+import * as api from "../services/communityApi";
+
+interface AppDataContextValue {
+  communities: Community[];
+  loading: boolean;
+  error: string | null;
+  refresh: (wallet: string) => Promise<void>;
+  createCommunity: (name: string, description: string, auth: SignedAuthPayload) => Promise<Community>;
+  joinCommunity: (inviteCode: string, auth: SignedAuthPayload) => Promise<Community>;
+  addProposalToCommunity: (
+    communityId: string,
+    proposalAddress: string,
+    auth: SignedAuthPayload
+  ) => Promise<Community>;
+}
+
+const AppDataContext = createContext<AppDataContextValue | null>(null);
+
+export const AppDataProvider: FC<{ children: ReactNode }> = ({ children }) => {
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async (wallet: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.getJoinedCommunities(wallet);
+      setCommunities(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load communities.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const createCommunity = useCallback(async (name: string, description: string, auth: SignedAuthPayload) => {
+    const community = await api.createCommunity(name, description, auth);
+    setCommunities((prev) => [...prev, community]);
+    return community;
+  }, []);
+
+  const joinCommunity = useCallback(async (inviteCode: string, auth: SignedAuthPayload) => {
+    const community = await api.joinCommunity(inviteCode, auth);
+    setCommunities((prev) => {
+      const exists = prev.some((c) => c._id === community._id);
+      return exists ? prev.map((c) => (c._id === community._id ? community : c)) : [...prev, community];
+    });
+    return community;
+  }, []);
+
+  const addProposalToCommunity = useCallback(
+    async (communityId: string, proposalAddress: string, auth: SignedAuthPayload) => {
+      const community = await api.addProposalToCommunity(communityId, proposalAddress, auth);
+      setCommunities((prev) => prev.map((c) => (c._id === communityId ? community : c)));
+      return community;
+    },
+    []
+  );
+
+  return (
+    <AppDataContext.Provider
+      value={{ communities, loading, error, refresh, createCommunity, joinCommunity, addProposalToCommunity }}
+    >
+      {children}
+    </AppDataContext.Provider>
+  );
+};
+
+export function useAppData(): AppDataContextValue {
+  const ctx = useContext(AppDataContext);
+  if (!ctx) throw new Error("useAppData must be used within AppDataProvider");
+  return ctx;
+}
+</file>
+
+<file path="frontend/src/pages/CommunityDetail.tsx">
+import { type FC, useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { PublicKey } from "@solana/web3.js";
+import { Navbar } from "../components/Navbar";
+import { ProposalCard } from "../components/ProposalCard";
+import { CreateProposalModal } from "../components/CreateProposalModal";
+import { useAuthWallet } from "../hooks/UseAuthWallet";
+import { useWalletAuth } from "../hooks/useWalletAuth";
+import { useProgram } from "../anchor/useProgram";
+import { hasWalletVoted } from "../services/votingService";
+import { getCommunity, buildInviteLink, addProposalToCommunity } from "../services/communityApi";
+import { type Community } from "../types";
+import { ArrowLeft, Plus, Copy, Check, Info, Loader2 } from "lucide-react";
+
+export const CommunityDetail: FC = () => {
+  const { invite_code } = useParams();
+  const { address, connected } = useAuthWallet();
+  const { sign } = useWalletAuth();
+  const program = useProgram();
+  const navigate = useNavigate();
+
+  const [community, setCommunity] = useState<Community | null>(null);
+  const [loadingCommunity, setLoadingCommunity] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [showCreateProposal, setShowCreateProposal] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [hasVotedGlobally, setHasVotedGlobally] = useState(false);
+
+  // Guard: only signed-in users may view a community
+  useEffect(() => {
+    if (!connected) navigate("/");
+  }, [connected, navigate]);
+
+  // Load the community from the backend
+  useEffect(() => {
+    if (!invite_code || !address) return;
+    setLoadingCommunity(true);
+    setLoadError(null);
+    getCommunity(invite_code)
+      .then(setCommunity)
+      .catch((err) => setLoadError(err instanceof Error ? err.message : "Failed to load community."))
+      .finally(() => setLoadingCommunity(false));
+  }, [invite_code, address]);
+
+  // Check the contract-wide vote flag for this wallet. NOTE: the Vote PDA
+  // is seeded only by wallet, not by proposal, so this is a global
+  // "has this wallet ever voted" check, not per-proposal — see the
+  // "Known contract limitations" note in the README.
+  useEffect(() => {
+    if (!program || !address) return;
+    hasWalletVoted(program, new PublicKey(address)).then(setHasVotedGlobally).catch(() => {});
+  }, [program, address]);
+
+  const handleProposalClosed = useCallback((proposalAddress: string) => {
+    setCommunity((prev) =>
+      prev
+        ? { ...prev, proposalAddresses: prev.proposals.filter((a) => a !== proposalAddress) }
+        : prev
+    );
+  }, []);
+
+  const handleCopyInvite = async () => {
+    if (!community) return;
+    await navigator.clipboard.writeText(buildInviteLink(community));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const handleProposalCreated = async (proposalAddress: string) => {
+    if (!community) return;
+    try {
+      const auth = await sign("add_proposal_to_community");
+      const updated = await addProposalToCommunity(community._id, proposalAddress, auth);
+      setCommunity(updated);
+    } catch {
+      // The proposal is already live on-chain even if linking it to the
+      // community off-chain fails — don't block the creator on that; just
+      // reflect it locally so they still see it in this session.
+      setCommunity((prev) =>
+        prev ? { ...prev, proposalAddresses: [...prev.proposals, proposalAddress] } : prev
+      );
+    }
+  };
+
+  if (!address) return null;
+
+  if (loadingCommunity) {
+    return (
+      <div className="min-h-screen bg-[#f6f5ff]">
+        <Navbar />
+        <div className="max-w-4xl mx-auto px-6 py-16 flex items-center gap-2 text-slate-400 text-sm">
+          <Loader2 size={16} className="animate-spin" /> Loading community...
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError || !community) {
+    return (
+      <div className="min-h-screen bg-[#f6f5ff]">
+        <Navbar />
+        <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-500">
+          {loadError ?? "Community not found, or you're not a member of it."}
+        </div>
+      </div>
+    );
+  }
+
+  const isMember = community.members.includes(address);
+
+  if (!isMember) {
+    return (
+      <div className="min-h-screen bg-[#f6f5ff]">
+        <Navbar />
+        <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-500">
+          You need to join this community with an invite link before you can view it.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f6f5ff]">
+      <Navbar />
+      <div className="max-w-4xl mx-auto px-6 py-10">
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand-600"
+        >
+          <ArrowLeft size={16} /> Back to dashboard
+        </button>
+
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-brand-900">{community.name}</h1>
+            {community.description && (
+              <p className="text-sm text-slate-500 mt-1">{community.description}</p>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleCopyInvite}
+              className="flex items-center gap-2 bg-white border border-slate-200 text-brand-900 font-medium rounded-xl px-4 py-2.5 hover:border-brand-300 transition"
+            >
+              {copied ? <Check size={16} /> : <Copy size={16} />}
+              Invite link
+            </button>
+            <button
+              onClick={() => setShowCreateProposal(true)}
+              className="flex items-center gap-2 bg-brand-600 text-white font-medium rounded-xl px-4 py-2.5 hover:bg-brand-500 transition"
+            >
+              <Plus size={16} /> New proposal
+            </button>
+          </div>
+        </div>
+
+        {hasVotedGlobally && (
+          <div className="mt-4 flex items-start gap-2 bg-slate-50 border border-slate-200 text-slate-500 text-sm rounded-xl px-4 py-3">
+            <Info size={16} className="shrink-0 mt-0.5" />
+            This wallet has already cast its vote. The connected contract currently allows one
+            vote per wallet total (not per proposal) — voting is disabled everywhere until that's
+            changed on-chain.
+          </div>
+        )}
+
+        <h2 className="mt-8 text-sm font-semibold text-slate-500 uppercase tracking-wide">
+          Active proposals
+        </h2>
+
+        {community.proposals.length === 0 ? (
+          <div className="mt-4 bg-white border border-dashed border-slate-200 rounded-2xl p-10 text-center">
+            <p className="text-slate-500">No proposals yet. Create the first one.</p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {community.proposals.map((addr) => (
+              <ProposalCard
+                key={addr}
+                proposalAddress={addr}
+                wallet={address}
+                hasVotedGlobally={hasVotedGlobally}
+                onVoted={() => setHasVotedGlobally(true)}
+                onClosed={handleProposalClosed}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showCreateProposal && (
+        <CreateProposalModal
+          communityId={community._id}
+          wallet={address}
+          onClose={() => setShowCreateProposal(false)}
+          onCreated={handleProposalCreated}
+        />
+      )}
+    </div>
+  );
+};
+</file>
+
+<file path="frontend/src/pages/JoinByLink.tsx">
+import { type FC, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useAuthWallet } from "../hooks/UseAuthWallet";
+import { useWalletAuth } from "../hooks/useWalletAuth";
+// import { useAppData } from "../context/AppDataContext";
+import { joinCommunity } from "../services/communityApi";
+
+export const JoinByLink: FC = () => {
+  const { invite_code } = useParams();
+  const { address, connected } = useAuthWallet();
+  const { sign } = useWalletAuth();
+  // const { joinCommunity } = useAppData();
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [previewName ] = useState<string | null>(null);
+
+  // Best-effort preview so the visitor sees which community they're
+  // joining before they've even connected a wallet.
+  // useEffect(() => {
+  //   if (!inviteCode) return;
+  //   joinCommunity(inviteCode)
+  //     .then((p) => setPreviewName(p.name))
+  //     .catch(() => {
+  //       // Preview failing is fine — joining below still works without it.
+  //     });
+  // }, [inviteCode]);
+
+  // Once connected, sign a message to prove wallet ownership, then join.
+  useEffect(() => {
+    if (connected && address && invite_code && !joining) {
+      setJoining(true);
+      sign("join_community")
+        .then((auth) => joinCommunity(invite_code, auth))
+        .then((community) => navigate(`/api/communities/${community.invite_code}`))
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : "Couldn't join that community.");
+          setJoining(false);
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, address, invite_code]);
+
+  return (
+    <div className="min-h-screen bg-[#f6f5ff] flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl shadow-soft p-8 max-w-md w-full text-center">
+        <h1 className="text-xl font-semibold text-brand-900">
+          You've been invited{previewName ? ` to ${previewName}` : ""}
+        </h1>
+        <p className="text-sm text-slate-500 mt-2">
+          Sign in with Phantom, then sign a message to confirm you own this wallet.
+        </p>
+        <div className="mt-6 flex justify-center">
+          <WalletMultiButton />
+        </div>
+        {joining && !error && (
+          <p className="text-sm text-slate-400 mt-4">Joining community...</p>
+        )}
+        {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
+      </div>
+    </div>
+  );
+};
+</file>
+
+<file path="frontend/src/pages/Landing.tsx">
+import { type FC, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useAuthWallet } from "../hooks/UseAuthWallet";
+import { ShieldCheck, Users, BarChart3 } from "lucide-react";
+import  DarkVeil  from "../components/DarkVeil"
+
+export const Landing: FC = () => {
+  const { connected } = useAuthWallet();
+  const navigate = useNavigate();
+
+  // Only signed-in users can proceed — redirect straight to the dashboard
+  // the moment Phantom reports a connected wallet.
+  useEffect(() => {
+    if (connected) navigate("/dashboard");
+  }, [connected, navigate]);
+
+  return (
+  <div className="relative min-h-screen overflow-hidden">
+
+    {/* Background */}
+    <DarkVeil
+      hueShift={0}
+      noiseIntensity={0}
+      scanlineIntensity={0}
+      speed={0.5}
+      scanlineFrequency={0}
+      warpAmount={0}
+    />
+
+    {/* Foreground */}
+    <div className="relative z-10 min-h-screen flex flex-col justify-center">
+
+      <div className="max-w-6xl mx-auto w-full px-6 text-center">
+
+        <span className="inline-block px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-violet-300">
+          Built on Solana
+        </span>
+
+        <h1 className="mt-8 text-5xl md:text-6xl font-bold text-white tracking-tight max-w-4xl mx-auto">
+          Vote together. Trust the chain, not the admin.
+        </h1>
+
+        <p className="mt-6 text-lg text-slate-300 max-w-2xl mx-auto leading-8">
+          Create a community, invite your people, and run proposals where every
+          wallet gets exactly one vote — verifiably, every time.
+        </p>
+
+        <div className="mt-10 flex justify-center">
+          <WalletMultiButton />
+        </div>
+
+        <p className="mt-4 text-slate-400">
+          Sign in with Phantom to create or join a community.
+        </p>
+
+        <div className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8">
+
+          <FeatureCard
+            icon={<Users size={22} />}
+            title="Communities"
+            copy="Spin up a community in seconds and share one invite link."
+          />
+
+          <FeatureCard
+            icon={<BarChart3 size={22} />}
+            title="Live Proposals"
+            copy="Post proposals and watch results update as votes come in."
+          />
+
+          <FeatureCard
+            icon={<ShieldCheck size={22} />}
+            title="One Wallet, One Vote"
+            copy="Enforced at the protocol level — no ballot stuffing, no duplicates."
+          />
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+  );
+};
+
+const FeatureCard: FC<{
+  icon: React.ReactNode;
+  title: string;
+  copy: string;
+}> = ({ icon, title, copy }) => (
+  <div className="rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10 p-6 text-left hover:bg-white/15 transition-all duration-300">
+
+    <div className="w-12 h-12 rounded-xl bg-violet-500/20 text-violet-300 flex items-center justify-center mb-4">
+      {icon}
+    </div>
+
+    <h3 className="text-xl font-semibold text-white">
+      {title}
+    </h3>
+
+    <p className="mt-2 text-slate-300 leading-6">
+      {copy}
+    </p>
+
+  </div>
+);
+</file>
+
+<file path="frontend/src/services/communityApi.ts">
+// Thin REST client for your community/invite-link backend. Mutating calls
+// require a SignedAuthPayload (see useWalletAuth) — the backend should
+// verify the signature against `wallet` before trusting the request.
+import { type Community } from "../types";
+import { type SignedAuthPayload } from "../utils/walletAuth";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? `Request failed (${res.status})`);
+  }
+  return res.json();
+}
+
+// POST /api/communities { name, description, wallet, message, signature } -> Community
+export function createCommunity(name: string, description: string, auth: SignedAuthPayload): Promise<Community> {
+  return request<Community>(`/api/communities`, {
+    method: "POST",
+    body: JSON.stringify({ name, description, ...auth }),
+  });
+}
+
+// POST /api/communities/join { inviteCode, wallet, message, signature } -> Community
+export function joinCommunity(invite_code: string, auth: SignedAuthPayload): Promise<Community> {
+  return request<Community>(`/api/communities/join/${invite_code}`, {
+    method: "POST",
+    body: JSON.stringify({ invite_code, ...auth }),
+  });
+}
+
+// GET /api/communities/user/:wallet -> Community[]
+export function getJoinedCommunities(wallet: string): Promise<Community[]> {
+  return request<Community[]>(
+    `/api/communities/user/${encodeURIComponent(wallet)}`
+  );
+}
+
+//Get the community you clicked on
+export function getCommunity(invite_code: string): Promise<Community> {
+  return request<Community>(`/api/communities/${encodeURIComponent(invite_code)}`);
+}
+
+// POST /api/communities/:id/proposals { proposalAddress, wallet, message, signature } -> Community
+export function addProposalToCommunity(
+  communityId: string,
+  proposalAddress: string,
+  auth: SignedAuthPayload
+): Promise<Community> {
+  return request<Community>(`/api/communities/${communityId}/proposals`, {
+    method: "POST",
+    body: JSON.stringify({ proposalAddress, ...auth }),
+  });
+}
+
+
+export function buildInviteLink(community: Community): string {
+  return `${window.location.origin}/join/${community.invite_code}`;
+}
+</file>
+
+<file path="frontend/src/types/index.ts">
+export interface Community {
+  _id: string;
+  name: string;
+  description: string;
+  createdBy: string; // wallet pubkey (base58) of the creator
+  members: string[];
+  invite_code: string; // opaque code issued by the backend
+  proposals: string[]; // on-chain Proposal account addresses
+  createdAt: number;
+}
+</file>
+
+<file path="frontend/src/App.tsx">
+import { type FC } from "react";
+import { Routes, Route } from "react-router-dom";
+import { Landing } from "./pages/Landing";
+import { Dashboard } from "./pages/Dashboard";
+import { CommunityDetail } from "./pages/CommunityDetail";
+import { JoinByLink } from "./pages/JoinByLink";
+
+const App: FC = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/api/communities/:invite_code" element={<CommunityDetail />} />
+      <Route path="/join/:inviteCode" element={<JoinByLink />} />
+    </Routes>
+  );
+};
+
+export default App;
+</file>
+
+<file path="frontend/src/index.css">
+@import "@solana/wallet-adapter-react-ui/styles.css";
+@import "tailwindcss";
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+}
+
+/* Override the default wallet-adapter button so it matches our design language */
+.wallet-adapter-button {
+  background: linear-gradient(135deg, #5b3cff, #7c6cff) !important;
+  border-radius: 9999px !important;
+  height: 48px !important;
+  font-weight: 600 !important;
+}
+</file>
+
+<file path="frontend/package.json">
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/wallet-adapter-phantom": "^0.9.29",
+    "@solana/wallet-adapter-react": "^0.15.39",
+    "@solana/wallet-adapter-react-ui": "^0.9.39",
+    "@solana/wallet-adapter-wallets": "^0.16.1",
+    "@solana/web3.js": "^1.98.4",
+    "@tailwindcss/vite": "^4.3.3",
+    "buffer": "^6.0.3",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.25.0",
+    "ogl": "^1.0.11",
+    "process": "^0.11.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-hot-toast": "^2.6.0",
+    "react-router-dom": "^7.18.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@types/bs58": "^4.0.4",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vite-plugin-node-polyfills": "^0.28.0"
+  }
+}
+</file>
+
+<file path="frontend/vite.config.ts">
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
+
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+    nodePolyfills({
+      globals: {
+        Buffer: true,
+        global: true,
+        process: true,
+      },
+    }),
+  ],
+});
+</file>
+
+<file path="frontend/src/pages/Dashboard.tsx">
+import { type FC, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Navbar } from "../components/Navbar";
+import { CreateCommunityModal } from "../components/CreateCommunityModal";
+import { JoinCommunityModal } from "../components/JoinCommunityModal";
+import { CommunityCard } from "../components/CommunityCard";
+import { useAppData } from "../context/AppDataContext";
+import { useAuthWallet } from "../hooks/UseAuthWallet";
+import { Plus, LogIn, Loader2 } from "lucide-react";
+import DarkVeil from "../components/DarkVeil";
+
+export const Dashboard: FC = () => {
+  const { address, connected } = useAuthWallet();
+  const { communities, loading, error, refresh } = useAppData();
+  const navigate = useNavigate();
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [showJoin, setShowJoin] = useState(false);
+
+  // Guard: only signed-in users may view the dashboard
+  useEffect(() => {
+    if (!connected) navigate("/");
+  }, [connected, navigate]);
+
+  // Load this wallet's communities from the backend
+  useEffect(() => {
+    if (address) refresh(address);
+  }, [address, refresh]);
+
+  if (!address) return null;
+
+  return (
+  <div className="relative min-h-screen overflow-hidden">
+
+    {/* Animated background */}
+    <DarkVeil
+      hueShift={0}
+      noiseIntensity={0}
+      scanlineIntensity={0}
+      speed={0.5}
+      scanlineFrequency={0}
+      warpAmount={0}
+    />
+
+    {/* Dashboard content */}
+    <div className="relative z-10 min-h-screen">
+
+      <Navbar />
+
+      <div className="max-w-4xl mx-auto px-6 py-10">
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              Your dashboard
+            </h1>
+
+            <p className="text-sm text-slate-300 mt-1">
+              Signed in as{" "}
+              <span className="font-mono">
+                {address.slice(0, 4)}...{address.slice(-4)}
+              </span>
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+
+            <button
+              onClick={() => setShowJoin(true)}
+              className="flex items-center gap-2 bg-white/10 backdrop-blur-xl border border-white/20 text-white font-medium rounded-xl px-4 py-2.5 hover:bg-white/20 transition"
+            >
+              <LogIn size={16} />
+              Join community
+            </button>
+
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 bg-violet-600 text-white font-medium rounded-xl px-4 py-2.5 hover:bg-violet-700 transition"
+            >
+              <Plus size={16} />
+              Create community
+            </button>
+
+          </div>
+
+        </div>
+
+        <h2 className="mt-10 text-sm font-semibold text-slate-400 uppercase tracking-wide">
+          Your communities
+        </h2>
+
+        {loading ? (
+          <div className="mt-4 flex items-center gap-2 text-slate-300 text-sm">
+            <Loader2 size={16} className="animate-spin" />
+            Loading communities...
+          </div>
+        ) : error ? (
+          <div className="mt-4 bg-red-500/20 border border-red-400/30 text-red-200 rounded-2xl p-6">
+            {error}
+          </div>
+        ) : communities.length === 0 ? (
+          <div className="mt-4 bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl p-10 text-center">
+            <p className="text-slate-300">
+              You haven't joined or created a community yet.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {communities.map((c) => (
+              <CommunityCard
+                key={c._id}
+                community={c}
+                onClick={() => navigate(`/api/communities/${c.invite_code}`)}
+              />
+            ))}
+          </div>
+        )}
+
+      </div>
+
+      {showCreate && (
+        <CreateCommunityModal onClose={() => setShowCreate(false)} />
+      )}
+
+      {showJoin && (
+        <JoinCommunityModal
+          onClose={() => setShowJoin(false)}
+          onJoined={(invite_code) => {
+            setShowJoin(false);
+            navigate(`/api/communities/${invite_code}`);
+          }}
+        />
+      )}
+
+    </div>
+
+  </div>
+  );
+};
+</file>
+
+</files>
