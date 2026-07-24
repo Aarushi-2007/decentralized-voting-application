@@ -10,7 +10,7 @@ import { useWalletAuth } from "../hooks/useWalletAuth";
 // import { hasWalletVoted } from "../services/votingService";
 import { getCommunity, buildInviteLink, addProposalToCommunity } from "../services/communityApi";
 import { type Community } from "../types";
-import { ArrowLeft, Plus, Copy, Check, Info, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Copy, Check, Loader2 } from "lucide-react";
 import DarkVeil from "../components/DarkVeil";
 
 export const CommunityDetail: FC = () => {
