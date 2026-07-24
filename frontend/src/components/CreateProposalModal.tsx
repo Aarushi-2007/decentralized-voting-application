@@ -93,7 +93,7 @@ export const CreateProposalModal: FC<Props> = ({wallet, onClose, onCreated }) =>
           type="datetime-local"
           value={endTime}
           onChange={(e) => setEndTime(e.target.value)}
-          className="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition [color-scheme:dark]"
+          className="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition [scheme-dark]"
         />
 
         <label className="block mt-4 text-sm font-medium text-slate-400">Options (max 5)</label>

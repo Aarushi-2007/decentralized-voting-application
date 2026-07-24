@@ -37,6 +37,10 @@
               {
                 "kind": "account",
                 "path": "member"
+              },
+              {
+                "kind": "account",
+                "path": "proposal"
               }
             ]
           }

@@ -1,13 +1,13 @@
 import { type FC, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { PublicKey } from "@solana/web3.js";
+// import { PublicKey } from "@solana/web3.js";
 import { Navbar } from "../components/Navbar";
 import { ProposalCard } from "../components/ProposalCard";
 import { CreateProposalModal } from "../components/CreateProposalModal";
 import { useAuthWallet } from "../hooks/UseAuthWallet";
 import { useWalletAuth } from "../hooks/useWalletAuth";
-import { useProgram } from "../anchor/useProgram";
-import { hasWalletVoted } from "../services/votingService";
+// import { useProgram } from "../anchor/useProgram";
+// import { hasWalletVoted } from "../services/votingService";
 import { getCommunity, buildInviteLink, addProposalToCommunity } from "../services/communityApi";
 import { type Community } from "../types";
 import { ArrowLeft, Plus, Copy, Check, Info, Loader2 } from "lucide-react";
@@ -17,7 +17,7 @@ export const CommunityDetail: FC = () => {
   const { invite_code } = useParams();
   const { address, connected } = useAuthWallet();
   const { sign } = useWalletAuth();
-  const program = useProgram();
+  // const program = useProgram();
   const navigate = useNavigate();
 
   const [community, setCommunity] = useState<Community | null>(null);
@@ -25,7 +25,6 @@ export const CommunityDetail: FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showCreateProposal, setShowCreateProposal] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [hasVotedGlobally, setHasVotedGlobally] = useState(false);
 
   // Guard: only signed-in users may view a community
   useEffect(() => {
@@ -47,10 +46,10 @@ export const CommunityDetail: FC = () => {
   // is seeded only by wallet, not by proposal, so this is a global
   // "has this wallet ever voted" check, not per-proposal — see the
   // "Known contract limitations" note in the README.
-  useEffect(() => {
-    if (!program || !address) return;
-    hasWalletVoted(program, new PublicKey(address)).then(setHasVotedGlobally).catch(() => {});
-  }, [program, address]);
+  // useEffect(() => {
+  //   if (!program || !address) return;
+  //   hasWalletVoted(program, new PublicKey(address), new PublicKey(proposalAddress)).then(setHasVotedGlobally).catch(() => {});
+  // }, [program, address]);
 
   const handleProposalClosed = useCallback((proposalAddress: string) => {
     setCommunity((prev) =>
@@ -167,21 +166,14 @@ export const CommunityDetail: FC = () => {
             </div>
           </div>
 
-          {hasVotedGlobally && (
-            <div className="mt-4 flex items-start gap-2 bg-white/[0.04] backdrop-blur-xl border border-white/10 text-slate-400 text-sm rounded-xl px-4 py-3">
-              <Info size={16} className="shrink-0 mt-0.5 text-brand-300" />
-              This wallet has already cast its vote. The connected contract currently allows one
-              vote per wallet total (not per proposal) — voting is disabled everywhere until that's
-              changed on-chain.
-            </div>
-          )}
+          
 
           <h2 className="mt-8 text-xs font-semibold text-slate-500 uppercase tracking-wider">
             Active proposals
           </h2>
 
           {community.proposals.length === 0 ? (
-            <div className="mt-4 bg-white/[0.04] backdrop-blur-xl border border-dashed border-white/15 rounded-2xl p-10 text-center">
+            <div className="mt-4 bg-white/4 backdrop-blur-xl border border-dashed border-white/15 rounded-2xl p-10 text-center">
               <p className="text-slate-400">No proposals yet. Create the first one.</p>
             </div>
           ) : (
@@ -191,8 +183,6 @@ export const CommunityDetail: FC = () => {
                   key={addr}
                   proposalAddress={addr}
                   wallet={address}
-                  hasVotedGlobally={hasVotedGlobally}
-                  onVoted={() => setHasVotedGlobally(true)}
                   onClosed={handleProposalClosed}
                 />
               ))}

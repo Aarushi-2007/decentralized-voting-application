@@ -69,7 +69,7 @@ export async function castVoteOnChain(
   option: number
 ): Promise<void> {
   const proposalPubkey = new PublicKey(proposalAddress);
-  const [votePda] = deriveVotePda(member);
+  const [votePda] = deriveVotePda(member,proposalPubkey);
 
   await program.methods
     .castVote(option)
@@ -82,9 +82,8 @@ export async function castVoteOnChain(
     .rpc();
 }
 
-// Reflects the contract's real (global, not per-proposal) vote limit.
-export async function hasWalletVoted(program: Program, member: PublicKey): Promise<boolean> {
-  const [votePda] = deriveVotePda(member);
+export async function hasWalletVoted(program: Program, member: PublicKey, proposal: PublicKey): Promise<boolean> {
+  const [votePda] = deriveVotePda(member,proposal);
   const info = await program.provider.connection.getAccountInfo(votePda);
   return info !== null;
 }

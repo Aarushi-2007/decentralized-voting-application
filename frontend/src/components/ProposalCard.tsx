@@ -9,21 +9,18 @@ import {
   fetchProposal,
   finalizeProposalOnChain,
   friendlyTxError,
+  hasWalletVoted,
 } from "../services/votingService";
 
 interface Props {
   proposalAddress: string;
   wallet: string;
-  hasVotedGlobally: boolean;
-  onVoted: () => void;
   onClosed: (proposalAddress: string) => void;
 }
 
 export const ProposalCard: FC<Props> = ({
   proposalAddress,
   wallet,
-  hasVotedGlobally,
-  onVoted,
   onClosed,
 }) => {
   const program = useProgram();
@@ -31,7 +28,8 @@ export const ProposalCard: FC<Props> = ({
   const [loading, setLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
+  const [hasVoted, setHasVoted]= useState(false)
+;
   const load = useCallback(async () => {
     if (!program) return;
     try {
@@ -47,6 +45,19 @@ export const ProposalCard: FC<Props> = ({
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!program || !wallet) return;
+
+    hasWalletVoted(
+      program,
+      new PublicKey(wallet),
+      new PublicKey(proposalAddress),
+    )
+      .then(setHasVoted)
+      .catch(() => {});
+  }, [program, wallet, proposalAddress]);
+
 
   if (loading) {
     return (
@@ -69,20 +80,27 @@ export const ProposalCard: FC<Props> = ({
   const votingClosed = Date.now() / 1000 >= proposal.endTime;
 
   const handleVote = async (optionIndex: number) => {
-    if (!program || hasVotedGlobally || proposal.finalized) return;
-    setPendingAction(`vote-${optionIndex}`);
-    setError(null);
-    try {
-      await castVoteOnChain(program, new PublicKey(wallet), proposalAddress, optionIndex);
-      await load();
-      onVoted();
-    } catch (err) {
-      setError(friendlyTxError(err));
-    } finally {
-      setPendingAction(null);
-    }
-  };
+  if (!program || proposal.finalized || hasVoted) return;
 
+  setPendingAction(`vote-${optionIndex}`);
+  setError(null);
+
+  try {
+    await castVoteOnChain(
+      program,
+      new PublicKey(wallet),
+      proposalAddress,
+      optionIndex
+    );
+
+    setHasVoted(true);   // <-- Add this
+    await load();
+  } catch (err) {
+    setError(friendlyTxError(err));
+  } finally {
+    setPendingAction(null);
+  }
+};
   const handleFinalize = async () => {
     if (!program) return;
     setPendingAction("finalize");
@@ -135,7 +153,7 @@ export const ProposalCard: FC<Props> = ({
             <button
               key={i}
               onClick={() => handleVote(i)}
-              disabled={hasVotedGlobally || proposal.finalized || pendingAction !== null}
+              disabled={ hasVoted || proposal.finalized || pendingAction !== null}
               className="w-full relative overflow-hidden rounded-xl border border-white/10 disabled:cursor-default group hover:border-white/20 transition-colors"
             >
               <div

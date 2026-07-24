@@ -13,12 +13,12 @@ export function deriveProposalPda(creator: PublicKey): [PublicKey, number] {
   );
 }
 
-export function deriveVotePda(member: PublicKey): [PublicKey, number] {
+export function deriveVotePda(member: PublicKey, proposal: PublicKey ): [PublicKey, number] {
   // Seeded only by the voter (cast_vote.rs) — NOT by proposal. This means a
   // wallet can hold only one Vote account program-wide, i.e. one vote EVER,
   // not one vote per proposal. See README "Known contract limitations".
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("vote"), member.toBuffer()],
+    [Buffer.from("vote"), member.toBuffer(), proposal.toBuffer()],
     PROGRAM_ID
   );
 }

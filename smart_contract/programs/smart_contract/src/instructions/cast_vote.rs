@@ -9,6 +9,7 @@ pub struct CastVote<'info> {
         seeds= [
             b"vote",
             member.key().as_ref(),
+            proposal.key().as_ref(),
         ],
         bump,
         space= 8
