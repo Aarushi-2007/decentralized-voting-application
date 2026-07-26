@@ -10,7 +10,7 @@ const db= require('./db');
 app.use(express.json());
 app.use(
     cors({
-        origin:"https://decentralized-voting-application-ft.vercel.app",
+        origin:"decentralized-voting-application-lovat.vercel.app",
         credentials: true,
     })
 );
