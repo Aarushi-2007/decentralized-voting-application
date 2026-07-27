@@ -17,11 +17,13 @@ fn test_create_proposal() {
     let creator= Keypair::new();
     let mut svm= LiteSVM::new();
     let bytes= include_bytes!("../../../target/deploy/smart_contract.so");
+    let proposal_id: u64 = 1;
 
     let (proposal_pda, _bump) = Pubkey::find_program_address(
         &[
             b"proposal",
             creator.pubkey().as_ref(),
+            &proposal_id.to_le_bytes()
         ],
         &smart_contract::ID,
     );

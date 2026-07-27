@@ -41,8 +41,8 @@ export async function createProposalOnChain(
   options: string[],
   endTimeUnix: number
 ): Promise<string> {
-  const [proposalPda] = deriveProposalPda(creator);
   const id = new BN(Date.now());
+  const [proposalPda] = deriveProposalPda(creator, id);
 
   await program.methods
     .createProposal(title, description, options, id, new BN(endTimeUnix))

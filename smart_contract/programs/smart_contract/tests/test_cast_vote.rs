@@ -20,21 +20,24 @@ fn test_cast_vote() {
     let creator= Keypair::new();
     let mut svm= LiteSVM::new();
     let bytes = include_bytes!("../../../target/deploy/smart_contract.so");
-    let (vote_pda, _bump) = Pubkey::find_program_address(
-        &[
-            b"vote",
-            member.pubkey().as_ref(),
-        ],
-        &smart_contract::ID,
-    );
-
+    let proposal_id: u64 = 1;
     let (proposal_pda, _bump) = Pubkey::find_program_address(
         &[
             b"proposal",
             creator.pubkey().as_ref(),
+            &proposal_id.to_le_bytes(),
         ],
         &smart_contract::ID,
     );
+    let (vote_pda, _bump) = Pubkey::find_program_address(
+        &[
+            b"vote",
+            member.pubkey().as_ref(),
+            proposal_pda.as_ref(),
+        ],
+        &smart_contract::ID,
+    );
+
     svm.add_program(program_id, bytes).unwrap();
     svm.airdrop(&member.pubkey(), 1_000_000_000).unwrap();
     svm.airdrop(&creator.pubkey(), 1_000_000_000).unwrap();

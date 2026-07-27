@@ -1,14 +1,15 @@
 import { PublicKey } from "@solana/web3.js";
+import { BN } from "@coral-xyz/anchor";
 
 // This must match declare_id!() in lib.rs — NOTE: Anchor.toml currently
 // points to a *different* program id (B8aK6tZe...). Reconcile before deploying.
 export const PROGRAM_ID = new PublicKey("6HF7SL2ydXxthwKgFmw5ELh9QzkgrTav7AWEuKcCqh5S");
 
-export function deriveProposalPda(creator: PublicKey): [PublicKey, number] {
+export function deriveProposalPda(creator: PublicKey, proposalId: BN): [PublicKey, number] {
   // Seeded only by creator (create_proposal.rs) — a wallet can only have
   // ONE live proposal at a time until it's closed. Not scoped by `id`.
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("proposal"), creator.toBuffer()],
+    [Buffer.from("proposal"), creator.toBuffer(), proposalId.toArrayLike(Buffer, "le", 8),],
     PROGRAM_ID
   );
 }

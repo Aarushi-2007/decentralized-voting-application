@@ -11,6 +11,7 @@ pub struct CloseProposal<'info> {
         seeds= [
             b"proposal",
             creator.key().as_ref(),
+            &proposal.id.to_le_bytes(),
         ],
         bump,
         close= creator,
